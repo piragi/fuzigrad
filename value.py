@@ -45,6 +45,18 @@ class Value():
     def __truediv__(self, other):
         return self * other**(-1)
 
+    def __radd__(self, other):
+        return self + other
+    
+    def __rsub__(self, other):
+        return other + (-self)
+    
+    def __rmul__(self, other):
+        return self * other
+    
+    def __rtruediv__(self, other):
+        return other * self**(-1)
+
     def backward(self):
         topo = []
         visited = set()
@@ -65,11 +77,3 @@ class Value():
 
     def __repr__(self):
         return f"Value(data={self.value})"
-
-a = Value(2.0)
-b = Value(5.0)
-c = (b / a)
-print(c._prev)
-c.backward()
-print(a.grad)
-print(b.grad)
