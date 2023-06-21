@@ -34,9 +34,6 @@ def matmul( tensor1, tensor2):
     a = tensor1.value.astype(np.float32)
     b = tensor2.value.astype(np.float32)
 
-    print("matmul:")
-    print(tensor1.value)
-    print(tensor2.value)
     assert tensor1.shape[1] == tensor2.shape[0]
 
     # TODO: tiling instead of fetching every cell from global memory
@@ -125,5 +122,95 @@ def relu(tensor):
     relu.relu(queue, a.shape, None, a_buf, np.int32(a.shape[1]))
     cl.enqueue_copy(queue, a, a_buf)
     return a
+
+def is_even(n):
+    return n > 0 and (n%2) == 0
+
+def mse(tensor1, tensor2):
+    a = tensor1.value.astype(np.float32)
+    b = tensor2.value.astype(np.float32)
+
+    mse = cl.Program(context, """
+        __kernel void squared_difference(__global float* a, __global float* b, __global float* c, const int size) {
+            int row = get_global_id(0);
+            int column = get_global_id(1);
+            int idx = column + row * size;
+
+            c[idx] = pow(a[idx] - b[idx], 2);
+        }
+
+        __kernel void sum(__global float* a, const int size, const int num_elements) {
+            int row = get_global_id(0);
+            int column = get_global_id(1);
+            int idx = column + row * size;
+            
+            a[idx] += a[idx + num_elements];
+        }
+
+        __kernel void sum_remainder(__global float* a, const int size, const int num_elements) {
+            int row = get_global_id(0);
+            int idx = row * size;
+
+            a[idx] += a[idx + size -1];
+        }
+
+        __kernel void sum_row_wise(__global float* a, const int size, const int num_elements) {
+            int row = get_global_id(0);
+            int idx = row * size;
+            
+            a[idx] += a[idx + num_elements*size];
+        }
+    """).build()
+    a_buf = cl.Buffer(context, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=a)
+    b_buf = cl.Buffer(context, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=b)
+    c = np.zeros_like(a)
+    c_buf = cl.Buffer(context, mf.WRITE_ONLY, c.nbytes)
+    mse.squared_difference(queue, c.shape, None, a_buf, b_buf, c_buf, np.int32(a.shape[1]))
+    cl.enqueue_copy(queue, c, c_buf)
+    print('before addition')
+    print(c)
+
+    even = is_even(c.shape[1])
+    num_elements = c.shape[1] // 2
+    print(c.shape)
+    print((c.shape[0]//2, c.shape[1]))
+    c_buf = cl.Buffer(context, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=c)
+    while (num_elements != 0):
+        print(f'ITERATION: num_elements={num_elements}, even={even}')
+        mse.sum(queue, (c.shape[0], num_elements), None, c_buf, np.int32(c.shape[1]), np.int32(num_elements))
+        cl.enqueue_copy(queue, c, c_buf)
+        print(c)
+        if not even:
+            print('extra')
+            mse.sum_remainder(queue, (c.shape[0],), None, c_buf, np.int32(c.shape[1]), np.int32(num_elements+1))
+            cl.enqueue_copy(queue, c, c_buf)
+            print(c)
+        even = is_even(num_elements)
+        num_elements = num_elements//2
+
+    cl.enqueue_copy(queue, c, c_buf)
+    even = is_even(c.shape[0])
+    num_elements = c.shape[0] // 2
+    print(c.shape)
+    print(f'num_elements: {num_elements}')
+    print(c)
+    while (num_elements != 0):
+        c_buf = cl.Buffer(context, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=c)
+        mse.sum_row_wise(queue, (num_elements,), None, c_buf, np.int32(c.shape[1]), np.int32(num_elements))
+        cl.enqueue_copy(queue, c, c_buf)
+        print(c)
+        if not even:
+            print('extra')
+            c[0][0] += c[num_elements+1][0] 
+            print(c)
+        num_elements = num_elements//2
+
+        print(f'c = {c}')
+
+    # TODO: does one extra copy, but could be rewritten - nice to know
+    result = np.zeros(1, dtype=np.float32)
+    cl.enqueue_copy(queue, result, c_buf, src_offset=0) 
+    print(c.size)
+    return result/c.size
 
 

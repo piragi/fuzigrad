@@ -1,5 +1,5 @@
 import numpy as np
-from mlops import matmul, add, mul, relu, transpose
+from mlops import matmul, add, mul, relu, transpose, mse
 
 # TODO: do not initialize Mlops for every Tensor created. Once should be enough
 class Tensor():
@@ -15,13 +15,6 @@ class Tensor():
       out = Tensor(matmul(self, other), op='@', children=(self, other))
 
       def backward():
-         print(self.value.shape)
-         neu = out.grad * other.value
-         print("get in here:")
-         print(out.grad.value)
-         print(other.value)
-         print(neu.value)
-         print(type(neu))
          self.grad += out.grad @ other.T
          other.grad += self.T @ out.grad
       out._backward = backward
@@ -56,9 +49,12 @@ class Tensor():
 
    def relu(self):
       return Tensor(relu(self))
+
+   def mse(self, other):
+      return Tensor(mse(self, other))
    
    def backward(self):
-      self.grad = Tensor(self.value.mean())
+      self.grad = Tensor(np.ones_like(self.value)) * Tensor([1/(self.shape[0]*self.shape[1])])
 
       topo = []
       visited = set()
