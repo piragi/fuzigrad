@@ -1,3 +1,4 @@
+from math import sqrt
 import torch
 from value import Value
 from tensor import Tensor
@@ -76,27 +77,18 @@ b_torch = torch.tensor([[1.,2.], [1.,2.], [1.,2.]], requires_grad=True)
 c_torch = a_torch @ b_torch
 mean_c = c_torch.mean()  # mean of c_torch to get a scalar
 mean_c.backward()
-print(c_torch)
-print(mean_c)
-print(a_torch.grad)
-print(f'a_torch.grad = {a_torch.grad}')
-print(f'b_torch.grad = {b_torch.grad}')
-
 c.backward()
-print(f'a.grad = {a.grad.value}')
-print(f'b.grad = {b.grad.value}')
+assert np.allclose(a_torch.grad, a.grad.value)
+assert np.allclose(b_torch.grad, b.grad.value)
 
-a_torch = torch.tensor([[1,2,3], [1,2,3]])
-b_torch = torch.tensor([1])
-c_torch = a_torch * b_torch
-print(c_torch)
-
-rand1 = np.array([[1,2,3], [1,2,3]])
-rand2 = np.array([[0.9, 2.1, 3.8], [0.2, 2.5, 4]])
+rand1 = np.random.uniform(0, 100, (785, 783))
+rand2 = np.random.uniform(0, 100, (785, 783))
 a_torch = torch.tensor(rand1)
 b_torch = torch.tensor(rand2)
 c_torch = F.mse_loss(a_torch, b_torch)
 a = Tensor(rand1)
 b = Tensor(rand2)
 c = a.mse(b)
-print(f'diff torch-fuzi {c_torch - c.value}, c_torch:{c_torch}, c:{c.value}')
+c_cpu = np.mean((rand1 - rand2)**2)
+assert np.allclose(c_torch, c.value)
+print(f'diff torch-fuzi {c_torch.numpy() - c.value}, fuzigrad:{c.value}, torch:{c_torch}, cpu:{c_cpu}')

@@ -151,7 +151,7 @@ def mse(tensor1, tensor2):
             int row = get_global_id(0);
             int idx = row * size;
 
-            a[idx] += a[idx + size -1];
+            a[idx] += a[idx + (num_elements*2)];
         }
 
         __kernel void sum_row_wise(__global float* a, const int size, const int num_elements) {
@@ -166,51 +166,34 @@ def mse(tensor1, tensor2):
     c = np.zeros_like(a)
     c_buf = cl.Buffer(context, mf.WRITE_ONLY, c.nbytes)
     mse.squared_difference(queue, c.shape, None, a_buf, b_buf, c_buf, np.int32(a.shape[1]))
-    cl.enqueue_copy(queue, c, c_buf)
-    print('before addition')
-    print(c)
-
+  
     even = is_even(c.shape[1])
     num_elements = c.shape[1] // 2
-    print(c.shape)
-    print((c.shape[0]//2, c.shape[1]))
-    c_buf = cl.Buffer(context, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=c)
     while (num_elements != 0):
-        print(f'ITERATION: num_elements={num_elements}, even={even}')
         mse.sum(queue, (c.shape[0], num_elements), None, c_buf, np.int32(c.shape[1]), np.int32(num_elements))
-        cl.enqueue_copy(queue, c, c_buf)
-        print(c)
         if not even:
-            print('extra')
-            mse.sum_remainder(queue, (c.shape[0],), None, c_buf, np.int32(c.shape[1]), np.int32(num_elements+1))
-            cl.enqueue_copy(queue, c, c_buf)
-            print(c)
+            mse.sum_remainder(queue, (c.shape[0],), None, c_buf, np.int32(c.shape[1]), np.int32(num_elements))
         even = is_even(num_elements)
         num_elements = num_elements//2
 
     cl.enqueue_copy(queue, c, c_buf)
-    even = is_even(c.shape[0])
+    size = c.size
+    
+    def next_power_of_two(n):
+        return 2**(np.ceil(np.log2(n)))
+    new_rows = int(next_power_of_two(c.shape[0]))
+    if c.shape[0] != new_rows:
+        c = np.pad(c, ((0, new_rows - c.shape[0]), (0, 0)), mode='constant')
+    
     num_elements = c.shape[0] // 2
-    print(c.shape)
-    print(f'num_elements: {num_elements}')
-    print(c)
+    c_buf = cl.Buffer(context, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=c)
     while (num_elements != 0):
-        c_buf = cl.Buffer(context, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=c)
         mse.sum_row_wise(queue, (num_elements,), None, c_buf, np.int32(c.shape[1]), np.int32(num_elements))
-        cl.enqueue_copy(queue, c, c_buf)
-        print(c)
-        if not even:
-            print('extra')
-            c[0][0] += c[num_elements+1][0] 
-            print(c)
         num_elements = num_elements//2
 
-        print(f'c = {c}')
-
-    # TODO: does one extra copy, but could be rewritten - nice to know
     result = np.zeros(1, dtype=np.float32)
-    cl.enqueue_copy(queue, result, c_buf, src_offset=0) 
-    print(c.size)
-    return result/c.size
+    cl.enqueue_copy(queue, result, c_buf, src_offset=0)
+    
+    return result/size
 
 

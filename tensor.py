@@ -70,7 +70,6 @@ class Tensor():
 
       for v in reversed(topo):
          v._backward()
-         print(v.grad)
 
    @property
    def shape(self):
