@@ -1,5 +1,6 @@
 import pyopencl as cl
 import numpy as np
+import time
 
 context = cl.create_some_context()
 queue = cl.CommandQueue(context)
@@ -127,6 +128,7 @@ def is_even(n):
     return n > 0 and (n%2) == 0
 
 def mse(tensor1, tensor2):
+    start_time = time.time()
     a = tensor1.value.astype(np.float32)
     b = tensor2.value.astype(np.float32)
 
@@ -165,8 +167,15 @@ def mse(tensor1, tensor2):
     b_buf = cl.Buffer(context, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=b)
     c = np.zeros_like(a)
     c_buf = cl.Buffer(context, mf.WRITE_ONLY, c.nbytes)
+    
+    print(f'Move buffer a,b,c to device: {time.time() - start_time} seconds')
+    start_time = time.time()
+
     mse.squared_difference(queue, c.shape, None, a_buf, b_buf, c_buf, np.int32(a.shape[1]))
   
+    print(f'Squared difference: {time.time() - start_time} seconds')
+    start_time = time.time()
+
     even = is_even(c.shape[1])
     num_elements = c.shape[1] // 2
     while (num_elements != 0):
@@ -175,6 +184,9 @@ def mse(tensor1, tensor2):
             mse.sum_remainder(queue, (c.shape[0],), None, c_buf, np.int32(c.shape[1]), np.int32(num_elements))
         even = is_even(num_elements)
         num_elements = num_elements//2
+    
+    print(f'Row-wise sum: {time.time() - start_time} seconds')
+    start_time = time.time()
 
     cl.enqueue_copy(queue, c, c_buf)
     size = c.size
@@ -187,12 +199,22 @@ def mse(tensor1, tensor2):
     
     num_elements = c.shape[0] // 2
     c_buf = cl.Buffer(context, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=c)
+
+    print(f'Transfer c to host, padd, transfer c to device: {time.time() - start_time} seconds')
+    start_time = time.time()
+
     while (num_elements != 0):
         mse.sum_row_wise(queue, (num_elements,), None, c_buf, np.int32(c.shape[1]), np.int32(num_elements))
         num_elements = num_elements//2
 
+    print(f'Column-wise sum: {time.time() - start_time} seconds')
+    start_time = time.time()
+
     result = np.zeros(1, dtype=np.float32)
     cl.enqueue_copy(queue, result, c_buf, src_offset=0)
+    
+    print(f'Transfer c to scalar: {time.time() - start_time} seconds')
+    start_time = time.time()
     
     return result/size
 
