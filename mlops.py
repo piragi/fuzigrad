@@ -162,6 +162,13 @@ def mse(tensor1, tensor2):
             
             a[idx] += a[idx + num_elements*size];
         }
+        
+        __kernel void sum_row_wise_remainder(__global float* a, const int size, const int num_elements) {
+            int row = get_global_id(0);
+            int idx = row * size;
+            
+            a[0] += a[size*(num_elements*2)];
+        }
     """).build()
     a_buf = cl.Buffer(context, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=a)
     b_buf = cl.Buffer(context, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=b)
@@ -188,23 +195,13 @@ def mse(tensor1, tensor2):
     print(f'Row-wise sum: {time.time() - start_time} seconds')
     start_time = time.time()
 
-    cl.enqueue_copy(queue, c, c_buf)
-    size = c.size
-    
-    def next_power_of_two(n):
-        return 2**(np.ceil(np.log2(n)))
-    new_rows = int(next_power_of_two(c.shape[0]))
-    if c.shape[0] != new_rows:
-        c = np.pad(c, ((0, new_rows - c.shape[0]), (0, 0)), mode='constant')
-    
+    even = is_even(c.shape[0])
     num_elements = c.shape[0] // 2
-    c_buf = cl.Buffer(context, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=c)
-
-    print(f'Transfer c to host, padd, transfer c to device: {time.time() - start_time} seconds')
-    start_time = time.time()
-
     while (num_elements != 0):
         mse.sum_row_wise(queue, (num_elements,), None, c_buf, np.int32(c.shape[1]), np.int32(num_elements))
+        if not even:
+            mse.sum_row_wise_remainder(queue, (1,), None, c_buf, np.int32(c.shape[1]), np.int32(num_elements))
+        even = is_even(num_elements)
         num_elements = num_elements//2
 
     print(f'Column-wise sum: {time.time() - start_time} seconds')
@@ -216,6 +213,6 @@ def mse(tensor1, tensor2):
     print(f'Transfer c to scalar: {time.time() - start_time} seconds')
     start_time = time.time()
     
-    return result/size
+    return result/c.size
 
 

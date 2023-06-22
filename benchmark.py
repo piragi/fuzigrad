@@ -10,17 +10,17 @@ def mse_time_comparison(n_rows, n_cols):
     rand2 = np.random.uniform(0, 100, (n_rows, n_cols))
 
     # FuziGrad MSE calculation
-    start = time.time()
     a = Tensor(rand1)
-    b = Tensor(rand2)
+    b = Tensor(rand2) # TODO: takes about a second to generate both?!
+    start = time.time()
     c = a.mse(b)
     end = time.time()
     fuzi_time = end - start
 
     # PyTorch MSE calculation
-    start = time.time()
     a_torch = torch.tensor(rand1, requires_grad=False)
     b_torch = torch.tensor(rand2, requires_grad=False)
+    start = time.time()
     c_torch = F.mse_loss(a_torch, b_torch)
     end = time.time()
     torch_time = end - start
