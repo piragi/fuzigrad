@@ -172,35 +172,33 @@ def mse(tensor1, tensor2):
     """).build()
     a_buf = cl.Buffer(context, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=a)
     b_buf = cl.Buffer(context, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=b)
-    c = np.zeros_like(a)
-    c_buf = cl.Buffer(context, mf.WRITE_ONLY, c.nbytes)
-    
-    print(f'Move buffer a,b,c to device: {time.time() - start_time} seconds')
+    c_buf = cl.Buffer(context, mf.WRITE_ONLY, a.nbytes)
+    print(f'Move buffer a,b to device, create c through kernel: {time.time() - start_time} seconds')
     start_time = time.time()
 
-    mse.squared_difference(queue, c.shape, None, a_buf, b_buf, c_buf, np.int32(a.shape[1]))
+    mse.squared_difference(queue, a.shape, None, a_buf, b_buf, c_buf, np.int32(a.shape[1]))
   
     print(f'Squared difference: {time.time() - start_time} seconds')
     start_time = time.time()
 
-    even = is_even(c.shape[1])
-    num_elements = c.shape[1] // 2
+    even = is_even(a.shape[1])
+    num_elements = a.shape[1] // 2
     while (num_elements != 0):
-        mse.sum(queue, (c.shape[0], num_elements), None, c_buf, np.int32(c.shape[1]), np.int32(num_elements))
+        mse.sum(queue, (a.shape[0], num_elements), None, c_buf, np.int32(a.shape[1]), np.int32(num_elements))
         if not even:
-            mse.sum_remainder(queue, (c.shape[0],), None, c_buf, np.int32(c.shape[1]), np.int32(num_elements))
+            mse.sum_remainder(queue, (a.shape[0],), None, c_buf, np.int32(a.shape[1]), np.int32(num_elements))
         even = is_even(num_elements)
         num_elements = num_elements//2
     
     print(f'Row-wise sum: {time.time() - start_time} seconds')
     start_time = time.time()
 
-    even = is_even(c.shape[0])
-    num_elements = c.shape[0] // 2
+    even = is_even(a.shape[0])
+    num_elements = a.shape[0] // 2
     while (num_elements != 0):
-        mse.sum_row_wise(queue, (num_elements,), None, c_buf, np.int32(c.shape[1]), np.int32(num_elements))
+        mse.sum_row_wise(queue, (num_elements,), None, c_buf, np.int32(a.shape[1]), np.int32(num_elements))
         if not even:
-            mse.sum_row_wise_remainder(queue, (1,), None, c_buf, np.int32(c.shape[1]), np.int32(num_elements))
+            mse.sum_row_wise_remainder(queue, (1,), None, c_buf, np.int32(a.shape[1]), np.int32(num_elements))
         even = is_even(num_elements)
         num_elements = num_elements//2
 
@@ -213,6 +211,6 @@ def mse(tensor1, tensor2):
     print(f'Transfer c to scalar: {time.time() - start_time} seconds')
     start_time = time.time()
     
-    return result/c.size
+    return result/a.size
 
 
