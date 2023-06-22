@@ -36,4 +36,4 @@ def mse_time_comparison(n_rows, n_cols):
     print(f'CPU numpy MSE Time: {cpu_time} seconds')
 
 # Usage
-mse_time_comparison(20000, 20000)  # specify number of rows and columns for the test tensors
+mse_time_comparison(10000, 20000)  # specify number of rows and columns for the test tensors

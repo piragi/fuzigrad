@@ -1,5 +1,6 @@
 import pyopencl as cl
 import numpy as np
+import time
 
 context = cl.create_some_context()
 queue = cl.CommandQueue(context)
@@ -127,16 +128,17 @@ def is_even(n):
     return n > 0 and (n%2) == 0
 
 def mse(tensor1, tensor2):
-    a = tensor1.value.astype(np.float32)
-    b = tensor2.value.astype(np.float32)
+    start_time = time.time()
+    a = tensor1.value
+    b = tensor2.value
 
     mse = cl.Program(context, """
-        __kernel void squared_difference(__global float* a, __global float* b, __global float* c, const int size) {
+        __kernel void squared_difference(__global float* a, __global float* b, const int size) {
             int row = get_global_id(0);
             int column = get_global_id(1);
             int idx = column + row * size;
 
-            c[idx] = pow(a[idx] - b[idx], 2);
+            a[idx] = (a[idx] - b[idx]) * (a[idx] - b[idx]);
         }
 
         __kernel void sum(__global float* a, const int size, const int num_elements) {
@@ -161,38 +163,56 @@ def mse(tensor1, tensor2):
             a[idx] += a[idx + num_elements*size];
         }
     """).build()
+
     a_buf = cl.Buffer(context, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=a)
     b_buf = cl.Buffer(context, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=b)
-    c = np.zeros_like(a)
-    c_buf = cl.Buffer(context, mf.WRITE_ONLY, c.nbytes)
-    mse.squared_difference(queue, c.shape, None, a_buf, b_buf, c_buf, np.int32(a.shape[1]))
-  
-    even = is_even(c.shape[1])
-    num_elements = c.shape[1] // 2
+    #c = np.zeros_like(a)
+    #c_buf = cl.Buffer(context, mf.WRITE_ONLY, c.nbytes)
+    print(f'Creating buffers: {time.time() - start_time} seconds')
+    start_time = time.time()
+    mse.squared_difference(queue, a.shape, None, a_buf, b_buf, np.int32(a.shape[1]))
+
+    print(f'Time for squared difference: {time.time() - start_time} seconds')
+    start_time = time.time()
+    
+    even = is_even(a.shape[1])
+    num_elements = a.shape[1] // 2
     while (num_elements != 0):
-        mse.sum(queue, (c.shape[0], num_elements), None, c_buf, np.int32(c.shape[1]), np.int32(num_elements))
+        mse.sum(queue, (a.shape[0], num_elements), None, a_buf, np.int32(a.shape[1]), np.int32(num_elements))
         if not even:
-            mse.sum_remainder(queue, (c.shape[0],), None, c_buf, np.int32(c.shape[1]), np.int32(num_elements))
+            mse.sum_remainder(queue, (a.shape[0],), None, a_buf, np.int32(a.shape[1]), np.int32(num_elements))
         even = is_even(num_elements)
         num_elements = num_elements//2
+    print(f'Time for rowwise addition: {time.time() - start_time} seconds')
+    start_time = time.time()
 
-    cl.enqueue_copy(queue, c, c_buf)
+    cl.enqueue_copy(queue, a, a_buf)
+    c = a
     size = c.size
     
+
     def next_power_of_two(n):
         return 2**(np.ceil(np.log2(n)))
     new_rows = int(next_power_of_two(c.shape[0]))
     if c.shape[0] != new_rows:
         c = np.pad(c, ((0, new_rows - c.shape[0]), (0, 0)), mode='constant')
     
-    num_elements = c.shape[0] // 2
     c_buf = cl.Buffer(context, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=c)
+    print(f'IR transfered and padded: {time.time() - start_time} seconds')
+    start_time = time.time()
+    
+    num_elements = c.shape[0] // 2
     while (num_elements != 0):
         mse.sum_row_wise(queue, (num_elements,), None, c_buf, np.int32(c.shape[1]), np.int32(num_elements))
         num_elements = num_elements//2
 
+    print(f'Time for column addition: {time.time() - start_time} seconds')
+    start_time = time.time()
+
     result = np.zeros(1, dtype=np.float32)
     cl.enqueue_copy(queue, result, c_buf, src_offset=0)
+    
+    print(f'IR transfered {time.time() - start_time} seconds')
     
     return result/size
 
