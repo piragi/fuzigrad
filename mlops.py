@@ -124,6 +124,25 @@ def relu(tensor):
     cl.enqueue_copy(queue, a, a_buf)
     return a
 
+def relu_backwards(tensor):
+    a = tensor.value.astype(np.float32)
+
+    relu = cl.Program(context, """
+        __kernel void relu(__global float* a, const int size) {
+            int row = get_global_id(0);
+            int column = get_global_id(1);
+
+            int idx = column + row * size;
+            if (a[idx] > 0) {
+                a[idx] = 1;
+            }
+        }
+    """).build()
+    a_buf = cl.Buffer(context, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=a)
+    relu.relu(queue, a.shape, None, a_buf, np.int32(a.shape[1]))
+    cl.enqueue_copy(queue, a, a_buf)
+    return a
+
 def is_even(n):
     return n > 0 and (n%2) == 0
 

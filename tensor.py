@@ -1,12 +1,12 @@
 import numpy as np
-from mlops import matmul, add, mul, relu, transpose, mse
+from mlops import matmul, add, mul, relu, transpose, mse, relu_backwards
 
 # TODO: do not initialize Mlops for every Tensor created. Once should be enough
 class Tensor():
-   def __init__(self, value, op=None, children=None, requires_grad=False):
+   def __init__(self, value, op=None, children=None, requires_grad=True):
        self.value = np.array(value)
        if requires_grad:
-         self.grad = Tensor(np.zeros_like(self.value).astype(float))
+         self.grad = Tensor(np.zeros_like(self.value).astype(float), requires_grad=False)
        self._op = op
        self._prev = children
        self._backward = lambda: None
@@ -27,8 +27,8 @@ class Tensor():
       out = Tensor(add(self, other), op='+', children=(self, other))
 
       def backward():
-         self.grad += out.value
-         other.grad += out.value
+         self.grad += out.grad
+         other.grad += out.grad
       out._backward = backward
       return out
 
@@ -48,13 +48,23 @@ class Tensor():
       return Tensor(mul(self, Tensor([-1])))
 
    def relu(self):
-      return Tensor(relu(self))
+      out = Tensor(relu(self), children=(self, ))
+
+      def backward():
+         self.grad = relu_backwards(self)
+      out._backward = backward
+      return out
 
    def mse(self, other):
-      return Tensor(mse(self, other))
+      out = Tensor(mse(self, other), children=(self, ))
+
+      def backward():
+         self.grad += ((self - other) * Tensor([2/other.value.size])) * out.grad
+      out._backward = backward
+      return out
    
    def backward(self):
-      self.grad = Tensor(np.ones_like(self.value)) * Tensor([1/(self.shape[0]*self.shape[1])])
+      self.grad = Tensor(np.ones_like(self.value))
 
       topo = []
       visited = set()

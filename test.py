@@ -4,6 +4,9 @@ from value import Value
 from tensor import Tensor
 import numpy as np
 import torch.nn.functional as F
+import mlops
+
+np.random.seed(1337)
 
 b_torch = torch.Tensor([5.0]).double()
 b_torch.requires_grad = True
@@ -74,12 +77,6 @@ c = a @ b
 a_torch = torch.tensor([[1.,2.,3.], [1.,2.,3.]], requires_grad=True)
 b_torch = torch.tensor([[1.,2.], [1.,2.], [1.,2.]], requires_grad=True)
 
-c_torch = a_torch @ b_torch
-mean_c = c_torch.mean()  # mean of c_torch to get a scalar
-mean_c.backward()
-c.backward()
-assert np.allclose(a_torch.grad, a.grad.value)
-assert np.allclose(b_torch.grad, b.grad.value)
 
 rand1 = np.random.uniform(0, 100, (785, 783))
 rand2 = np.random.uniform(0, 100, (785, 783))
@@ -92,3 +89,56 @@ c = a.mse(b)
 c_cpu = np.mean((rand1 - rand2)**2)
 assert np.allclose(c_torch, c.value)
 print(f'diff torch-fuzi {c_torch.numpy() - c.value}, fuzigrad:{c.value}, torch:{c_torch}, cpu:{c_cpu}')
+
+x_np = np.random.uniform(0, 100, (100, 100))
+target_np = np.random.uniform(0, 100, (100, 100))
+w1_np = np.random.uniform(0, 100, (100, 100))
+b1_np = np.random.uniform(0, 100, (100, 100))
+w2_np = np.random.uniform(0, 100, (100, 100))
+b2_np = np.random.uniform(0, 100, (100, 100))
+
+x = Tensor(x_np, requires_grad=True)
+target = Tensor(target_np, requires_grad=True)
+w1 = Tensor(w1_np, requires_grad=True)
+b1 = Tensor(b1_np, requires_grad=True)
+w2 = Tensor(w2_np, requires_grad=True)
+b2 = Tensor(b2_np, requires_grad=True)
+
+x_torch = torch.tensor(x_np, requires_grad=True)
+target_torch = torch.tensor(target_np, requires_grad=True)
+w1_torch = torch.tensor(w1_np, requires_grad=True)
+b1_torch = torch.tensor(b1_np, requires_grad=True)
+w2_torch = torch.tensor(w2_np, requires_grad=True)
+b2_torch = torch.tensor(b2_np, requires_grad=True)
+
+l1 = x @ w1
+l2 = l1 + b1
+l3 = l2 @ w2
+l4 =  l3 + b2
+loss = l4.mse(target)
+ir_torch = x_torch @ w1_torch
+ir_torch += b1_torch
+ir_torch = ir_torch @ w2_torch
+ir_torch += b2_torch
+loss_torch = F.mse_loss(ir_torch, target_torch)
+
+
+l1 = x @ w1
+l2 = l1 + b1
+l3 = l2 @ w2
+l4 = l3 + b2
+loss = l4.mse(target)
+ir_torch = x_torch @ w1_torch
+ir_torch += b1_torch
+ir_torch = F.relu(ir_torch)
+ir_torch = ir_torch @ w2_torch
+ir_torch += b2_torch
+ir_torch = F.relu(ir_torch)
+loss_torch = F.mse_loss(ir_torch, target_torch)
+loss.backward()
+loss_torch.backward()
+
+assert np.allclose(w1.grad.value, w1_torch.grad)
+assert np.allclose(b1.grad.value, b1_torch.grad)
+assert np.allclose(w2.grad.value, w2_torch.grad)
+assert np.allclose(b2.grad.value, b2_torch.grad)
