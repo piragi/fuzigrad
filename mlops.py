@@ -192,12 +192,12 @@ def mse(tensor1, tensor2):
     a_buf = cl.Buffer(context, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=a)
     b_buf = cl.Buffer(context, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=b)
     c_buf = cl.Buffer(context, mf.WRITE_ONLY, a.nbytes)
-    print(f'Move buffer a,b to device, create c through kernel: {time.time() - start_time} seconds')
+    #print(f'Move buffer a,b to device, create c through kernel: {time.time() - start_time} seconds')
     start_time = time.time()
 
     mse.squared_difference(queue, a.shape, None, a_buf, b_buf, c_buf, np.int32(a.shape[1]))
   
-    print(f'Squared difference: {time.time() - start_time} seconds')
+    #print(f'Squared difference: {time.time() - start_time} seconds')
     start_time = time.time()
 
     even = is_even(a.shape[1])
@@ -209,7 +209,7 @@ def mse(tensor1, tensor2):
         even = is_even(num_elements)
         num_elements = num_elements//2
     
-    print(f'Row-wise sum: {time.time() - start_time} seconds')
+    #print(f'Row-wise sum: {time.time() - start_time} seconds')
     start_time = time.time()
 
     even = is_even(a.shape[0])
@@ -221,13 +221,13 @@ def mse(tensor1, tensor2):
         even = is_even(num_elements)
         num_elements = num_elements//2
 
-    print(f'Column-wise sum: {time.time() - start_time} seconds')
+    #print(f'Column-wise sum: {time.time() - start_time} seconds')
     start_time = time.time()
 
     result = np.zeros(1, dtype=np.float32)
     cl.enqueue_copy(queue, result, c_buf, src_offset=0)
     
-    print(f'Transfer c to scalar: {time.time() - start_time} seconds')
+    #print(f'Transfer c to scalar: {time.time() - start_time} seconds')
     start_time = time.time()
     
     return result/a.size

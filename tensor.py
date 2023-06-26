@@ -1,7 +1,7 @@
 import numpy as np
 from mlops import matmul, add, mul, relu, transpose, mse, relu_backwards
 
-# TODO: do not initialize Mlops for every Tensor created. Once should be enough
+# TODO: requires_grad should be false tho
 class Tensor():
    def __init__(self, value, op=None, children=None, requires_grad=True):
        self.value = np.array(value)
@@ -51,7 +51,7 @@ class Tensor():
       out = Tensor(relu(self), children=(self, ))
 
       def backward():
-         self.grad = relu_backwards(self)
+         self.grad = Tensor(relu_backwards(self))
       out._backward = backward
       return out
 

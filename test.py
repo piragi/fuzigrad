@@ -1,12 +1,13 @@
 from math import sqrt
 import torch
+from sgd import SGD
 from value import Value
 from tensor import Tensor
 import numpy as np
 import torch.nn.functional as F
 import mlops
 
-np.random.seed(1337)
+#np.random.seed(1337)
 
 b_torch = torch.Tensor([5.0]).double()
 b_torch.requires_grad = True
@@ -114,18 +115,6 @@ b2_torch = torch.tensor(b2_np, requires_grad=True)
 l1 = x @ w1
 l2 = l1 + b1
 l3 = l2 @ w2
-l4 =  l3 + b2
-loss = l4.mse(target)
-ir_torch = x_torch @ w1_torch
-ir_torch += b1_torch
-ir_torch = ir_torch @ w2_torch
-ir_torch += b2_torch
-loss_torch = F.mse_loss(ir_torch, target_torch)
-
-
-l1 = x @ w1
-l2 = l1 + b1
-l3 = l2 @ w2
 l4 = l3 + b2
 loss = l4.mse(target)
 ir_torch = x_torch @ w1_torch
@@ -142,3 +131,45 @@ assert np.allclose(w1.grad.value, w1_torch.grad)
 assert np.allclose(b1.grad.value, b1_torch.grad)
 assert np.allclose(w2.grad.value, w2_torch.grad)
 assert np.allclose(b2.grad.value, b2_torch.grad)
+
+data = [
+    (Tensor([[0.0], [0.0]]), Tensor([[0.0], [0.0]])),
+    (Tensor([[0.0], [1.0]]), Tensor([[1.0], [1.0]])),
+    (Tensor([[1.0], [0.0]]), Tensor([[1.0], [1.0]])),
+    (Tensor([[1.0], [1.0]]), Tensor([[0.0], [0.0]]))
+]
+w1 = Tensor(np.random.rand(1,2))
+w2 = Tensor(np.random.rand(1,2))
+b1 = Tensor(np.random.rand(2,2))
+b2 = Tensor(np.random.rand(2,2))
+
+for i in range(20):
+    loss_epoch = []
+    for x, target in data:
+        print(x.value.shape)
+        l1 = x @ w1
+        l2 = l1 + b1
+        l3 = l2.relu()
+        l4 = l3 @ w2
+        l5 = l4 + b2
+        l6 = l5.relu()
+        loss = l6.mse(target)
+        loss.backward()
+        loss_epoch.append(loss.value)
+        sgd = SGD(loss, lr=0.001)
+        sgd.optimize()
+    loss_epoch = np.mean(loss_epoch)
+    print(f'loss={loss_epoch}')
+    if loss_epoch < 0.18:
+        break
+    print('-----EPOCH-----')
+
+
+x = Tensor([[0.0, 0.0], [1.0, 0.0]])
+l1 = x @ w1
+l2 = l1 + b1
+l3 = l2.relu()
+l4 = l3 @ w2
+l5 = l4 + b2
+l6 = l5.relu()
+print(l6.value)
