@@ -1,9 +1,8 @@
 import numpy as np
 from mlops import matmul, add, mul, relu, transpose, mse, relu_backwards
 
-# TODO: requires_grad should be false tho
 class Tensor():
-   def __init__(self, value, op=None, children=None, requires_grad=True):
+   def __init__(self, value, op=None, children=None, requires_grad=False):
        self.value = np.array(value)
        if requires_grad:
          self.grad = Tensor(np.zeros_like(self.value).astype(float), requires_grad=False)
@@ -12,7 +11,7 @@ class Tensor():
        self._backward = lambda: None
    
    def __matmul__(self, other):
-      out = Tensor(matmul(self, other), op='@', children=(self, other))
+      out = Tensor(matmul(self, other), op='@', children=(self, other), requires_grad=True)
 
       def backward():
          self.grad += out.grad @ other.T
@@ -24,7 +23,7 @@ class Tensor():
       return Tensor(matmul(other, self))
 
    def __add__(self, other):
-      out = Tensor(add(self, other), op='+', children=(self, other))
+      out = Tensor(add(self, other), op='+', children=(self, other), requires_grad=True)
 
       def backward():
          self.grad += out.grad
@@ -33,10 +32,10 @@ class Tensor():
       return out
 
    def __sub__(self, other): 
-      return Tensor(add(self, -other))
+      return Tensor(add(self, -other), requires_grad=True)
    
    def __mul__(self, other):
-      out = Tensor(mul(self, other), op='*', children=(self, other))
+      out = Tensor(mul(self, other), op='*', children=(self, other), requires_grad=True)
 
       def backward():
          self.grad += Tensor(out.grad) * Tensor(other.value) 
@@ -48,7 +47,7 @@ class Tensor():
       return Tensor(mul(self, Tensor([-1])))
 
    def relu(self):
-      out = Tensor(relu(self), children=(self, ))
+      out = Tensor(relu(self), children=(self, ), requires_grad=True)
 
       def backward():
          self.grad = Tensor(relu_backwards(self))
@@ -56,7 +55,7 @@ class Tensor():
       return out
 
    def mse(self, other):
-      out = Tensor(mse(self, other), children=(self, ))
+      out = Tensor(mse(self, other), children=(self, ), requires_grad=True)
 
       def backward():
          self.grad += ((self - other) * Tensor([2/other.value.size])) * out.grad
