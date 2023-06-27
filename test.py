@@ -8,8 +8,6 @@ import numpy as np
 import torch.nn.functional as F
 import mlops
 
-#np.random.seed(1337)
-
 b_torch = torch.Tensor([5.0]).double()
 b_torch.requires_grad = True
 c_torch = (b_torch/2)
@@ -120,10 +118,8 @@ l4 = l3 + b2
 loss = l4.mse(target)
 ir_torch = x_torch @ w1_torch
 ir_torch += b1_torch
-ir_torch = F.relu(ir_torch)
 ir_torch = ir_torch @ w2_torch
 ir_torch += b2_torch
-ir_torch = F.relu(ir_torch)
 loss_torch = F.mse_loss(ir_torch, target_torch)
 loss.backward()
 loss_torch.backward()
@@ -133,6 +129,8 @@ assert np.allclose(b1.grad.value, b1_torch.grad)
 assert np.allclose(w2.grad.value, w2_torch.grad)
 assert np.allclose(b2.grad.value, b2_torch.grad)
 
+# -- XOR NN --
+
 data = [
     (Tensor([[0.0, 0.0], [0.0, 1.0], [1.0, 0.0], [1.0, 1.0]], requires_grad=True), 
      Tensor([[0.0], [1.0], [1.0], [0.0]])),
@@ -141,7 +139,7 @@ data = [
 l1 = Linear(2, 5, 4)
 l2 = Linear(5, 1, 4)
 lr = 0.01
-for i in range(10):
+for i in range(5):
     epoch_loss = []
     for x, target in data:
         print(x.shape)
@@ -160,3 +158,4 @@ for i in range(10):
 x = Tensor([[0.0, 0.0], [0.0, 1.0], [1.0, 0.0], [1.0, 1.0]], requires_grad=True)
 x = l1.forward(x)
 x = l2.forward(x)
+print(f'logits = {x.value}')
