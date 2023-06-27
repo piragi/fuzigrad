@@ -3,8 +3,9 @@ Implementation of a autograd in python for educational purposes.
 
 ## Roadlist:
 - **First trained network!**
-    - SGD
-- Tensors
+    - Linear Layer (as simple as it gets)
+    - adding them in a Forward structure
+- **Accelerator**
     - Matmul with tiling
-    - MLops (no unneeded tranfers between host & device)
+    - Load leafs into buffers at start, have a queue of operation and memory access
     - Broadcasting

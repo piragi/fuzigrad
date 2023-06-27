@@ -1,5 +1,6 @@
 from math import sqrt
 import torch
+from linear import Linear
 from sgd import SGD
 from value import Value
 from tensor import Tensor
@@ -93,9 +94,9 @@ print(f'diff torch-fuzi {c_torch.numpy() - c.value}, fuzigrad:{c.value}, torch:{
 
 x_np = np.random.uniform(0, 100, (100, 100))
 target_np = np.random.uniform(0, 100, (100, 100))
-w1_np = np.random.uniform(0, 100, (100, 100))
-b1_np = np.random.uniform(0, 100, (100, 100))
-w2_np = np.random.uniform(0, 100, (100, 100))
+w1_np = np.random.uniform(0, 100, (100, 200))
+b1_np = np.random.uniform(0, 100, (100, 200))
+w2_np = np.random.uniform(0, 100, (200, 100))
 b2_np = np.random.uniform(0, 100, (100, 100))
 
 x = Tensor(x_np, requires_grad=True)
@@ -131,3 +132,31 @@ assert np.allclose(w1.grad.value, w1_torch.grad)
 assert np.allclose(b1.grad.value, b1_torch.grad)
 assert np.allclose(w2.grad.value, w2_torch.grad)
 assert np.allclose(b2.grad.value, b2_torch.grad)
+
+data = [
+    (Tensor([[0.0, 0.0], [0.0, 1.0], [1.0, 0.0], [1.0, 1.0]], requires_grad=True), 
+     Tensor([[0.0], [1.0], [1.0], [0.0]])),
+]
+
+l1 = Linear(2, 5, 4)
+l2 = Linear(5, 1, 4)
+lr = 0.01
+for i in range(10):
+    epoch_loss = []
+    for x, target in data:
+        print(x.shape)
+        x = l1.forward(x)
+        x = l2.forward(x)
+        loss = x.mse(target)
+        epoch_loss.append(loss.value)
+        loss.backward()
+        optim = SGD(loss, lr=lr)
+        optim.optimize()
+    epoch_loss = np.mean(epoch_loss)
+    print(f'epoch_loss = {epoch_loss}')
+    if epoch_loss < 0.20:
+        break
+
+x = Tensor([[0.0, 0.0], [0.0, 1.0], [1.0, 0.0], [1.0, 1.0]], requires_grad=True)
+x = l1.forward(x)
+x = l2.forward(x)
