@@ -3,8 +3,18 @@ import numpy as np
 import time
 
 context = cl.create_some_context()
+device = context.devices[0]
 queue = cl.CommandQueue(context)
 mf = cl.mem_flags
+
+# Now, 'devices' is a list of devices available in the context. 
+# You can print information about each device:
+print(f'Device name: {device.name}')
+print(f'Device type: {cl.device_type.to_string(device.type)}')
+print(f'Device memory: {device.global_mem_size//1024//1024} MB')
+print(f'Max compute units: {device.max_compute_units}')
+print(f'Max work group size: {device.max_work_group_size}')
+    # Add here any other device properties you are interested in
 
 def create_buffer( a, b):
     a_buf = cl.Buffer(context, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=a)
@@ -50,11 +60,25 @@ def matmul( tensor1, tensor2):
 
             c[row * K + column] = sum;
         }
+
+        __kernel void matmul(__global const float* a, __global const float* b, __global float* c, const int M, const int N, const int K) {
+            // position in c
+            const int x = get_group_id(0)
+        }
     """).build()
+    warp_size = matmul.matmul2d.get_work_group_info(
+    cl.kernel_work_group_info.PREFERRED_WORK_GROUP_SIZE_MULTIPLE, 
+    device)
+    print(f'Warp size: {warp_size}')
     a_buf, b_buf = create_buffer( a, b)
     c_np = np.zeros((a.shape[0], b.shape[1])).astype(np.float32)
     c_buf = cl.Buffer(context, mf.WRITE_ONLY, c_np.nbytes)
+    start_time = time.time()
     matmul.matmul2d(queue, c_np.shape, None, a_buf, b_buf, c_buf, np.int32(a.shape[1]), np.int32(b.shape[1]), np.int32(a.shape[0]))
+    matmul.matmul(queue, c_np.shape, (64, ), a_buf, b_buf, c_buf, np.int32(a.shape[1]), np.int32(b.shape[1]), np.int32(a.shape[0]))
+
+    print(f'Matmul: {time.time() - start_time} seconds')
+
     cl.enqueue_copy(queue, c_np, c_buf)
     return c_np
 

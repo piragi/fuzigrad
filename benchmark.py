@@ -2,8 +2,11 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 import time
+import matmul as op
 
 from tensor import Tensor
+
+np.random.seed(1337)
 
 def mse_time_comparison(n_rows, n_cols):
     rand1 = np.random.uniform(0, 100, (n_rows, n_cols))
@@ -35,5 +38,19 @@ def mse_time_comparison(n_rows, n_cols):
     print(f'PyTorch MSE Time: {torch_time} seconds')
     print(f'CPU numpy MSE Time: {cpu_time} seconds')
 
-# Usage
-mse_time_comparison(20000, 20000)  # specify number of rows and columns for the test tensors
+def matmul_time(n_rows, n_cols):
+    rand1 = np.random.uniform(0, 100, (n_rows, n_cols))
+    rand2 = np.random.uniform(0, 100, (n_rows, n_cols))
+    a = Tensor(rand1)
+    b = Tensor(rand2)
+
+    start = time.time()
+    c_normal = op.matmul_normal(a, b)
+    c = op.matmul(a, b)
+
+    c_torch = torch.tensor(rand1) @ torch.tensor(rand2)
+    assert np.allclose(c, c_torch)
+    
+
+#mse_time_comparison(20000, 20000)  # specify number of rows and columns for the test tensors
+matmul_time(1024, 1024)
