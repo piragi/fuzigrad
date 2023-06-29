@@ -112,7 +112,7 @@ def matmul( tensor1, tensor2):
 
         __kernel void matmul_coalesced(__global const float* a, __global const float* b, __global float* c, const int M, const int N, const int K) {
             // position in c
-            const int idx = get_local_id(0) + get_local_id(1) * get_local_size(0);
+            const int idx = get_local_id(1) + get_local_id(0) * get_local_size(0);
             const int x = get_group_id(0) * get_local_size(0) + (idx / get_local_size(0));
             const int y = get_group_id(1) * get_local_size(1) + (idx % get_local_size(1));
 
@@ -186,11 +186,14 @@ def matmul_normal(tensor1, tensor2):
     c_np = np.zeros((a.shape[0], b.shape[1])).astype(np.float32)
     c_buf = cl.Buffer(context, mf.WRITE_ONLY, c_np.nbytes)
 
-    start = time.time()
+    mean_elapsed = []
     for _ in range(100):
-        matmul.matmul(queue, global_work_size, (work_group_size, work_group_size), a_buf, b_buf, c_buf, M, N, K)
-    print(f'Normal = {time.time() - start}')
-
+        kernel = matmul.matmul
+        kernel.set_args(a_buf, b_buf, c_buf, M, N, K)
+        event = cl.enqueue_nd_range_kernel(queue, kernel, global_work_size, (work_group_size, work_group_size))        
+        event.wait()
+        mean_elapsed.append(1e-9 * (event.profile.end - event.profile.start))
+    print(f'Normal = {np.mean(mean_elapsed)}')
 
     cl.enqueue_copy(queue, c_np, c_buf)
     return c_np

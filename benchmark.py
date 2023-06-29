@@ -44,9 +44,8 @@ def matmul_time(n_rows, n_cols):
     a = Tensor(rand1)
     b = Tensor(rand2)
 
-    start = time.time()
     #c_normal = op.matmul_normal(a, b)
-    c = op.matmul(a, b)
+    #c = op.matmul(a, b)
     c = op.matmul_local(a,b)
 
     c_torch = torch.tensor(rand1) @ torch.tensor(rand2)
