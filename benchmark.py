@@ -6,7 +6,7 @@ import matmul as op
 
 from tensor import Tensor
 
-np.random.seed(1337)
+#np.random.seed(1337)
 
 def mse_time_comparison(n_rows, n_cols):
     rand1 = np.random.uniform(0, 100, (n_rows, n_cols))
@@ -39,18 +39,21 @@ def mse_time_comparison(n_rows, n_cols):
     print(f'CPU numpy MSE Time: {cpu_time} seconds')
 
 def matmul_time(n_rows, n_cols):
-    rand1 = np.random.uniform(0, 100, (n_rows, n_cols))
-    rand2 = np.random.uniform(0, 100, (n_rows, n_cols))
+    rand1 = np.random.uniform(0, 10, (n_rows, n_cols))
+    rand2 = np.random.uniform(0, 10, (n_rows, n_cols))
     a = Tensor(rand1)
     b = Tensor(rand2)
 
     start = time.time()
-    c_normal = op.matmul_normal(a, b)
+    #c_normal = op.matmul_normal(a, b)
     c = op.matmul(a, b)
+    c = op.matmul_local(a,b)
 
     c_torch = torch.tensor(rand1) @ torch.tensor(rand2)
+    #print(c)
+    #print(c_torch)
     assert np.allclose(c, c_torch)
     
 
 #mse_time_comparison(20000, 20000)  # specify number of rows and columns for the test tensors
-matmul_time(1024, 1024)
+matmul_time(1024, 1024) 
