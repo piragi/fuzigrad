@@ -34,11 +34,12 @@ def matmul_local(tensor1, tensor2):
         #define LSIZE 8
 
         __kernel void matmul_local(__global const float* a, __global const float* b, __global float* c, const int M, const int N, const int K) {
-            // position in c
-            const int c_row = get_group_id(0);
-            const int c_col = get_group_id(1); 
-            const int thread_row = get_local_id(0);
-            const int thread_col = get_local_id(1);
+            // position in c - switching up thread_row and thread_col results in
+            // 2x slowdown!
+            const int c_row = get_group_id(1);
+            const int c_col = get_group_id(0); 
+            const int thread_row = get_local_id(1);
+            const int thread_col = get_local_id(0);
 
             __local float a_local[LSIZE * LSIZE];
             __local float b_local[LSIZE * LSIZE];
