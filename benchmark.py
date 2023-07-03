@@ -46,7 +46,9 @@ def matmul_time(n_rows, n_cols):
 
     #c_normal = op.matmul_normal(a, b)
     #c = op.matmul(a, b)
+    
     c = op.matmul_local(a,b)
+    c = op.matmul_1d_blocktiling(a,b); 
 
     c_torch = torch.tensor(rand1) @ torch.tensor(rand2)
     #print(c)

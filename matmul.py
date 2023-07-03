@@ -32,18 +32,19 @@ def matmul_1d_blocktiling(tensor1, tensor2):
     matmul = cl.Program(context, """
         // has to match work_group_size
         #define LSIZE 8
-        #define BM 32
-        #define BN 32
-        #define BK 32
-        #define TM 2
+        #define BM 16
+        #define BN 16
+        #define BK 4
+        #define TM 4
 
-        __kernel void matmul_local(__global const float* a, __global const float* b, __global float* c, const int M, const int N, const int K) {
+        __kernel void matmul_1d_tiling(__global const float* a, __global const float* b, __global float* c, const int M, const int N, const int K) {
             const int c_row = get_group_id(1);
             const int c_col = get_group_id(0);
 
-            // this should be a multiple of 32?
             const int thread_row = get_local_id(1);
             const int thread_col = get_local_id(0);
+
+            const int idx = thread_col * BK + thread_row;
 
             __local float a_local[BM * BK];
             __local float b_local[BK * BN];
@@ -53,38 +54,56 @@ def matmul_1d_blocktiling(tensor1, tensor2):
             c += c_row * BM * N + c_col * BN;
 
             // cache for each thread
-            float thread_result[TM];
+            float thread_results[TM];
             for (int i = 0; i < TM; i++) {
-                threadResults[i] = 0.0f;
+                thread_results[i] = 0.0f;
             }
 
-            if (thread_row < M && thread_col < N) {
+            const int a_inner_col = idx % BK;
+            const int a_inner_row = idx / BK;
+            const int b_inner_col = idx % BN;
+            const int b_inner_row = idx / BN;
+
+            if (c_row < M && c_col < N) {
                 for (int block_idx=0; block_idx < K; block_idx += BK) {
                     // load data into local memory    
-                    a_local[thread_row * BK + thread_col] = a[thread_row * K + thread_col];
-                    b_local[thread_row * BN + thread_col] = b[thread_row * N + thread_col];
-                    // synch the load
+                    a_local[a_inner_row * BK + a_inner_col] = a[a_inner_row * K + a_inner_col];
+                    b_local[b_inner_row * BN + b_inner_col] = b[b_inner_row * N + b_inner_col];
                     barrier(CLK_LOCAL_MEM_FENCE);
 
                     // advance pointers
                     a += BK;
                     b += BK * N;
 
-                    for (int i=0; i < LSIZE; i++) {
-                        sum += a_local[thread_row * LSIZE + i] * b_local[i * LSIZE + thread_col];
-                    }
-
+                    for (int dot_idx=0; dot_idx < BK; dot_idx++) {
+                        const float b_tmp = b_local[dot_idx * BN + thread_col];
+                        for (int results_idx=0; results_idx < TM; results_idx++) {
+                            thread_results[results_idx] += a_local[(thread_row * TM + results_idx) * BK + dot_idx] * b_tmp;
+                        }
+                    } 
                     // prevent reloading cache before update of c 
                     barrier(CLK_LOCAL_MEM_FENCE);
                 }
-                c[thread_row * N + thread_col] = sum;
+
+                for (int results_idx=0; results_idx < TM; results_idx++) {
+                    c[(thread_row * TM + results_idx) * N + thread_col] = thread_results[results_idx];
+                }
             }
         }
     """).build()
 
-    warp_size = matmul.matmul_local.get_work_group_info(cl.kernel_work_group_info.PREFERRED_WORK_GROUP_SIZE_MULTIPLE, device)
-    work_group_size = 8
-    global_work_size = ((M + (work_group_size - 1)) // work_group_size * work_group_size), ((N + (work_group_size - 1)) // work_group_size * work_group_size)
+    BM = 16
+    BN = 16
+    BK = 4
+    TM = 4
+
+    warp_size = matmul.matmul_1d_tiling.get_work_group_info(cl.kernel_work_group_info.PREFERRED_WORK_GROUP_SIZE_MULTIPLE, device)
+    local_work_size = (BM, TM)
+    global_work_size = ((M + (BM - 1)) // BM * BM), ((N + (BN - 1)) // BN * BN)
+    global_work_size = (M , N//TM)
+
+    print(f'local work size: {local_work_size}')
+    print(f'global work size: {global_work_size}')
     
     a_buf = cl.Buffer(context, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=a)
     b_buf = cl.Buffer(context, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=b)
@@ -93,12 +112,12 @@ def matmul_1d_blocktiling(tensor1, tensor2):
     
     mean_elapsed = []
     for _ in range(100):
-        kernel = matmul.matmul_local
+        kernel = matmul.matmul_1d_tiling
         kernel.set_args(a_buf, b_buf, c_buf, M, N, K)
-        event = cl.enqueue_nd_range_kernel(queue, kernel, global_work_size, (work_group_size, work_group_size))        
+        event = cl.enqueue_nd_range_kernel(queue, kernel, global_work_size, local_work_size)        
         event.wait()
         mean_elapsed.append(1e-9 * (event.profile.end - event.profile.start))
-    print(f'Local Memory = {np.mean(mean_elapsed)}')
+    print(f'1-d tiling = {np.mean(mean_elapsed)}')
 
     cl.enqueue_copy(queue, c_np, c_buf)
     return c_np
