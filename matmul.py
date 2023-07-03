@@ -6,17 +6,6 @@ context = cl.create_some_context()
 device = context.devices[0]
 queue = cl.CommandQueue(context, properties=cl.command_queue_properties.PROFILING_ENABLE)
 mf = cl.mem_flags
-
-# Now, 'devices' is a list of devices available in the context. 
-# You can print information about each device:
-print(f'Device name: {device.name}')
-print(f'Device type: {cl.device_type.to_string(device.type)}')
-print(f'Device memory: {device.global_mem_size//1024//1024} MB')
-print(f'Max compute units: {device.max_compute_units}')
-print(f'Max work group size: {device.max_work_group_size}')
-print(f"The local memory size of the device is {device.get_info(cl.device_info.LOCAL_MEM_SIZE)} KB")
-
-
 max_wg_size = device.get_info(cl.device_info.MAX_WORK_GROUP_SIZE)
 
 def matmul_1d_blocktiling(tensor1, tensor2):
@@ -97,12 +86,13 @@ def matmul_1d_blocktiling(tensor1, tensor2):
     BK = 8
     TM = 8
 
+    # NOTE: Check the dimensions of all the matrix
     warp_size = matmul.matmul_1d_tiling.get_work_group_info(cl.kernel_work_group_info.PREFERRED_WORK_GROUP_SIZE_MULTIPLE, device)
     local_work_size = (BM, TM)
     global_work_size = ((M + (BM - 1)) // BM * BM), ((N + (BN - 1)) // BN * BN // TM)
 
-    print(f'local work size: {local_work_size}')
-    print(f'global work size: {global_work_size}')
+    #print(f'local work size: {local_work_size}')
+    #print(f'global work size: {global_work_size}')
     
     a_buf = cl.Buffer(context, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=a)
     b_buf = cl.Buffer(context, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=b)
