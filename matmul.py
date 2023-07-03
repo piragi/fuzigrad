@@ -32,10 +32,10 @@ def matmul_1d_blocktiling(tensor1, tensor2):
     matmul = cl.Program(context, """
         // has to match work_group_size
         #define LSIZE 8
-        #define BM 16
-        #define BN 16
-        #define BK 4
-        #define TM 4
+        #define BM 64
+        #define BN 64
+        #define BK 8
+        #define TM 8
 
         __kernel void matmul_1d_tiling(__global const float* a, __global const float* b, __global float* c, const int M, const int N, const int K) {
             const int c_row = get_group_id(1);
@@ -44,7 +44,7 @@ def matmul_1d_blocktiling(tensor1, tensor2):
             const int thread_row = get_local_id(1);
             const int thread_col = get_local_id(0);
 
-            const int idx = thread_col * BK + thread_row;
+            const int idx = thread_row * BM + thread_col;
 
             __local float a_local[BM * BK];
             __local float b_local[BK * BN];
@@ -92,15 +92,14 @@ def matmul_1d_blocktiling(tensor1, tensor2):
         }
     """).build()
 
-    BM = 16
-    BN = 16
-    BK = 4
-    TM = 4
+    BM = 64
+    BN = 64
+    BK = 8
+    TM = 8
 
     warp_size = matmul.matmul_1d_tiling.get_work_group_info(cl.kernel_work_group_info.PREFERRED_WORK_GROUP_SIZE_MULTIPLE, device)
     local_work_size = (BM, TM)
-    global_work_size = ((M + (BM - 1)) // BM * BM), ((N + (BN - 1)) // BN * BN)
-    global_work_size = (M , N//TM)
+    global_work_size = ((M + (BM - 1)) // BM * BM), ((N + (BN - 1)) // BN * BN // TM)
 
     print(f'local work size: {local_work_size}')
     print(f'global work size: {global_work_size}')

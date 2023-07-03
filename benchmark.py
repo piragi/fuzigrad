@@ -57,4 +57,4 @@ def matmul_time(n_rows, n_cols):
     
 
 #mse_time_comparison(20000, 20000)  # specify number of rows and columns for the test tensors
-matmul_time(1024, 1024) 
+matmul_time(2048, 2048) 
