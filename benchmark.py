@@ -2,6 +2,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 import time
+import sys
 import matmul as op
 
 from tensor import Tensor
@@ -47,14 +48,14 @@ def matmul_time(n_rows, n_cols):
     #c_normal = op.matmul_normal(a, b)
     #c = op.matmul(a, b)
     
-    c = op.matmul_local(a,b)
-    c = op.matmul_1d_blocktiling(a,b); 
+    c = op.matmul_1d_blocktiling(a,b) 
+    c = op.matmul_2d_blocktiling(a,b)
 
     c_torch = torch.tensor(rand1) @ torch.tensor(rand2)
-    #print(c)
-    #print(c_torch)
+    print(c)
+    print(c_torch)
     assert np.allclose(c, c_torch)
     
 
 #mse_time_comparison(20000, 20000)  # specify number of rows and columns for the test tensors
-matmul_time(2048, 2048) 
+matmul_time(64, 64) 
