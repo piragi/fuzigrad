@@ -48,14 +48,18 @@ def matmul_time(n_rows, n_cols):
     #c_normal = op.matmul_normal(a, b)
     #c = op.matmul(a, b)
     
-    c = op.matmul_1d_blocktiling(a,b) 
+    c = op.matmul_1d_blocktiling(a,b)  
     c = op.matmul_2d_blocktiling(a,b)
+    # c = op.debug(a, b)
 
     c_torch = torch.tensor(rand1) @ torch.tensor(rand2)
-    print(c)
-    print(c_torch)
+    np.set_printoptions(threshold=sys.maxsize)
+    # print(a.value)
+    # print('--------')
+    # print(c)
+    # print(c_torch)
     assert np.allclose(c, c_torch)
     
 
 #mse_time_comparison(20000, 20000)  # specify number of rows and columns for the test tensors
-matmul_time(64, 64) 
+matmul_time(1024, 1024) 
