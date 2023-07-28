@@ -1,6 +1,7 @@
 import pyopencl as cl
 import numpy as np
 import time
+import nvtx
 
 context = cl.create_some_context()
 device = context.devices[0]
@@ -139,15 +140,23 @@ def matmul_2d_blocktiling(tensor1, tensor2):
     b_buf = cl.Buffer(context, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=b)
     c_np = np.zeros((M, N)).astype(np.float32)
     c_buf = cl.Buffer(context, mf.WRITE_ONLY, c_np.nbytes)
+
+    total_number_operations = 2*K * M * N
     
     mean_elapsed = []
+    flops_avg = []
     for _ in range(runtime):
         kernel = matmul.matmul_2d_tiling
         kernel.set_args(a_buf, b_buf, c_buf, M, N, K)
+        r1 = nvtx.start_range(message="Matmul", color="red")
         event = cl.enqueue_nd_range_kernel(queue, kernel, global_work_size, local_work_size)        
         event.wait()
-        mean_elapsed.append(1e-9 * (event.profile.end - event.profile.start))
-    print(f'2-d tiling = {np.mean(mean_elapsed)}')
+        nvtx.end_range(r1)
+        time = 1e-9 * (event.profile.end - event.profile.start)
+        flops = total_number_operations / time
+        flops_avg.append(flops * 10 ** (-9))
+        mean_elapsed.append(time)
+    print(f'2-d tiling: time_avg= {np.mean(mean_elapsed)}, GFLOPs = {np.mean(flops_avg)}')
 
     cl.enqueue_copy(queue, c_np, c_buf)
     return c_np

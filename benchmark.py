@@ -4,11 +4,13 @@ import torch.nn.functional as F
 import time
 import sys
 import matmul as op
+import nvtx
 
 from tensor import Tensor
 
 #np.random.seed(1337)
 
+@nvtx.annotate(color="blue")
 def mse_time_comparison(n_rows, n_cols):
     rand1 = np.random.uniform(0, 100, (n_rows, n_cols))
     rand2 = np.random.uniform(0, 100, (n_rows, n_cols))
@@ -48,7 +50,7 @@ def matmul_time(n_rows, n_cols):
     #c_normal = op.matmul_normal(a, b)
     #c = op.matmul(a, b)
     
-    c = op.matmul_1d_blocktiling(a,b)  
+    #c = op.matmul_1d_blocktiling(a,b)
     c = op.matmul_2d_blocktiling(a,b)
     # c = op.debug(a, b)
 
@@ -62,4 +64,4 @@ def matmul_time(n_rows, n_cols):
     
 
 #mse_time_comparison(20000, 20000)  # specify number of rows and columns for the test tensors
-matmul_time(1024, 1024) 
+matmul_time(4096, 4096) 
