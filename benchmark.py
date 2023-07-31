@@ -51,17 +51,24 @@ def matmul_time(n_rows, n_cols):
     #c = op.matmul(a, b)
     
     #c = op.matmul_1d_blocktiling(a,b)
-    c = op.matmul_2d_blocktiling(a,b)
-    # c = op.debug(a, b)
+    #c = op.matmul_2d_blocktiling(a,b)
+    c = op.matmul_2d_blocktiling_cuda(a,b)
 
     c_torch = torch.tensor(rand1) @ torch.tensor(rand2)
-    np.set_printoptions(threshold=sys.maxsize)
-    # print(a.value)
-    # print('--------')
-    # print(c)
-    # print(c_torch)
-    assert np.allclose(c, c_torch)
-    
+
+    # Convert c_torch to numpy array and same data type as c
+    c_torch_np = c_torch.numpy().astype(c.dtype)
+
+    # Add prints and checks
+    print("Type and dtype of c: ", type(c), c.dtype)
+    print("Type and dtype of c_torch_np: ", type(c_torch_np), c_torch_np.dtype)
+
+    # Print if there are any NaN or infinite values in c or c_torch_np
+    print("NaN or inf in c: ", np.isnan(c).any() or np.isinf(c).any())
+    print("NaN or inf in c_torch_np: ", np.isnan(c_torch_np).any() or np.isinf(c_torch_np).any())
+
+    # Compare c and c_torch_np instead of c_torch
+    assert np.allclose(c, c_torch_np)
 
 #mse_time_comparison(20000, 20000)  # specify number of rows and columns for the test tensors
 matmul_time(4096, 4096) 
