@@ -33,7 +33,7 @@ def matmul_2d_blocktiling_cuda(tensor1, tensor2):
     matmul_source = SourceModule("""
         #define BM 128
         #define BN 128
-        #define BK 16
+        #define BK 8
         #define TM 8
         #define TN 8
 
@@ -121,8 +121,8 @@ def matmul_2d_blocktiling_cuda(tensor1, tensor2):
     block = (int(BM//TM), int(BN//TN), 1)
     grid = (int((M + (BM - 1)) // BM), int((N + (BN - 1)) // BN), 1)
 
-    print(block, type(block[0]))
-    print(grid, type(grid[0]))
+    print(f'block = {block}, {type(block[0])}')
+    print(f'grid = {grid}, {type(grid[0])}')
 
     # Arguments to the kernel function
     args = [a_buf, b_buf, c_buf, np.int32(M), np.int32(N), np.int32(K)]

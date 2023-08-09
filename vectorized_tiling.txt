@@ -1,0 +1,7 @@
+matrix: 128 x 128, BM = 128, BN = 128, BK = 8, TM = 8, TN = 8
+
+block = (16, 16), grid = (2, 2) -> 256 threads per block and 4 blocks -> 262144 threads in total
+
+we use TM, TN to load BM
+
+1. get index of block, thread; calculate idx
