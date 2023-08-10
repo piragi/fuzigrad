@@ -1,10 +1,11 @@
-#define BM 128
-#define BN 128
-#define BK 8
-#define TM 8
-#define TN 8
+#include <assert.h>
+#include "constants.h"
 
-__global__ void matmul_2d_tiling(float* a, float* b, float* c, const int M, const int N, const int K) {
+extern "C" __global__ void matmul_2d_tiling(float* a, float* b, float* c, const int M, const int N, const int K) {
+    const int number_of_threads = blockDim.x * blockDim.y;
+    const int tile_size = BM * BK;
+
+
     const int c_row = blockIdx.y;
     const int c_col = blockIdx.x;
 
@@ -25,21 +26,33 @@ __global__ void matmul_2d_tiling(float* a, float* b, float* c, const int M, cons
 
     const int a_inner_col = idx % (BK / 4);
     const int a_inner_row = idx / (BK / 4);
+    const int a_stride = (number_of_threads * 4) / BK;
 
     const int b_inner_col = idx % (BN / 4);
     const int b_inner_row = idx / (BN / 4);
+    // in the sgemm version its done differently, i dont see a reason why tho
+    const int b_stride = (number_of_threads * 4) / BN;
 
+    // to guarantue float4 loads
+    //assert(tile_size / number_of_threads % 4 == 0);
+    
     for (int block_idx = 0; block_idx < K; block_idx += BK) {
         // load 4 floats into local memory (L1 SMEM) 
-        // thats BM / number of threads per block
-        // meaning 128 / 32 = 4
-        float4 tmp = reinterpret_cast<float4 *>(&a[a_inner_row * K + a_inner_col * 4])[0];
-        a_local[(a_inner_col * 4 + 0) * BM + a_inner_row] = tmp.x;  
-        a_local[(a_inner_col * 4 + 1) * BM + a_inner_row] = tmp.y;
-        a_local[(a_inner_col * 4 + 2) * BM + a_inner_row] = tmp.z;
-        a_local[(a_inner_col * 4 + 3) * BM + a_inner_row] = tmp.w;
-
-        reinterpret_cast<float4 *>(&b_local[b_inner_row * BN + b_inner_col * 4])[0] = reinterpret_cast<float4 *>(&b[b_inner_row * N + b_inner_col * 4])[0];
+        // number of elements per tile / number of threads need to be dividable by 4
+        // (BK * BM) / (number_of_threads) % 4 == 0 
+        // meaning 1024 / 256 = 4
+        // to achieve a BK != TM we need to load multiple float4s
+        // meaning one thread loads float4 from row x and row x + offset (for 2048 elements with 256 threads)
+        for (int offset=0; offset < BM; offset+=a_stride) {
+            float4 tmp = reinterpret_cast<float4 *>(&a[(a_inner_row + offset) * K + a_inner_col * 4])[0];
+            a_local[(a_inner_col * 4 + 0) * BM + a_inner_row + offset] = tmp.x;  
+            a_local[(a_inner_col * 4 + 1) * BM + a_inner_row + offset] = tmp.y;
+            a_local[(a_inner_col * 4 + 2) * BM + a_inner_row + offset] = tmp.z;
+            a_local[(a_inner_col * 4 + 3) * BM + a_inner_row + offset] = tmp.w;
+        }
+        for (int offset=0; offset < BK; offset+=b_stride) {
+            reinterpret_cast<float4 *>(&b_local[(b_inner_row + offset) * BN + b_inner_col * 4])[0] = reinterpret_cast<float4 *>(&b[(b_inner_row + offset) * N + b_inner_col * 4])[0];
+        } 
         __syncthreads();
 
         // move the tile sideways

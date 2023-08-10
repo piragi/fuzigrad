@@ -13,3 +13,14 @@ Inspirations: [karpathy/micrograd](https://github.com/karpathy/micrograd/) and [
     - Sigmoid
     - improved SGD
     - DataLoader
+
+
+## Install:
+To compile the project:
+```bash
+make
+```
+To compile and start the benchmark:
+```bash
+make benchmark
+```

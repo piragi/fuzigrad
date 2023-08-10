@@ -1,34 +1,37 @@
-#include <stdio.h>
-#include <cuda.h>
+#include <cstdio>
 #include <cublas_v2.h>
-#include <assert.h>
-#include <cmath>
-#include "matmul_2d.cu"
+#include <cuda_runtime.h>
+#include "constants.h"
 
-void matmul_cuda(float *h_a, float *h_b, float *h_c, int M, int N, int K) {
+// Declaration of the custom CUDA kernel function (adjust as needed)
+extern "C" __global__ void matmul_2d_tiling(float* a, float* b, float* c, const int M, const int N, const int K);
+
+// Custom matrix multiplication function
+void matmul_custom(float* a, float* b, float* c, const int M, const int N, const int K) {
     float *d_a, *d_b, *d_c;
 
     cudaMalloc((void **)&d_a, sizeof(float) * M * K);
     cudaMalloc((void **)&d_b, sizeof(float) * K * N);
     cudaMalloc((void **)&d_c, sizeof(float) * M * N);
 
-    cudaMemcpy(d_a, h_a, sizeof(float) * M * K, cudaMemcpyHostToDevice);
-    cudaMemcpy(d_b, h_b, sizeof(float) * K * N, cudaMemcpyHostToDevice);
+    cudaMemcpy(d_a, a, sizeof(float) * M * K, cudaMemcpyHostToDevice);
+    cudaMemcpy(d_b, b, sizeof(float) * K * N, cudaMemcpyHostToDevice);
 
     dim3 block(BM / TM, BN / TN);
     dim3 grid((M + BM - 1) / BM, (N + BN - 1) / BN);
 
     matmul_2d_tiling<<<grid, block>>>(d_a, d_b, d_c, M, N, K);
 
-    cudaMemcpy(h_c, d_c, sizeof(float) * M * N, cudaMemcpyDeviceToHost);
+    cudaMemcpy(c, d_c, sizeof(float) * M * N, cudaMemcpyDeviceToHost);
 
     cudaFree(d_a);
     cudaFree(d_b);
     cudaFree(d_c);
 }
 
-void sgemm_cublas(float *h_a, float *h_b, float *h_c_blas, int M, int N, int K) {
-    cublasHandle_t handle;
+// cuBLAS matrix multiplication function
+void matmul_cublas(float* a, float* b, float* c, const int M, const int N, const int K) {
+        cublasHandle_t handle;
     cublasCreate(&handle);
 
     float *d_a, *d_b, *d_c;
@@ -36,14 +39,14 @@ void sgemm_cublas(float *h_a, float *h_b, float *h_c_blas, int M, int N, int K) 
     cudaMalloc((void **)&d_b, sizeof(float) * K * N);
     cudaMalloc((void **)&d_c, sizeof(float) * M * N);
 
-    cudaMemcpy(d_a, h_a, sizeof(float) * M * K, cudaMemcpyHostToDevice);
-    cudaMemcpy(d_b, h_b, sizeof(float) * K * N, cudaMemcpyHostToDevice);
+    cudaMemcpy(d_a, a, sizeof(float) * M * K, cudaMemcpyHostToDevice);
+    cudaMemcpy(d_b, b, sizeof(float) * K * N, cudaMemcpyHostToDevice);
 
     float alpha = 1.0f;
     float beta = 0.0f;
     cublasSgemm(handle, CUBLAS_OP_N, CUBLAS_OP_N, N, M, K, &alpha, d_b, N, d_a, K, &beta, d_c, N);
 
-    cudaMemcpy(h_c_blas, d_c, sizeof(float) * M * N, cudaMemcpyDeviceToHost);
+    cudaMemcpy(c, d_c, sizeof(float) * M * N, cudaMemcpyDeviceToHost);
 
     cudaFree(d_a);
     cudaFree(d_b);
@@ -52,10 +55,8 @@ void sgemm_cublas(float *h_a, float *h_b, float *h_c_blas, int M, int N, int K) 
     cublasDestroy(handle);
 }
 
-int main() {
-    const int M = 4096;
-    const int N = 4096;
-    const int K = 4096;
+// Benchmarking function
+extern "C" void matmul_benchmark(float* a, float* b, float* c, const int M, const int N, const int K) {
     const int num_iterations = 100; // Number of iterations for timing
 
     float *h_a = (float *)malloc(sizeof(float) * M * K);
@@ -73,7 +74,7 @@ int main() {
     // Timing custom kernel
     cudaEventRecord(start);
     for (int i = 0; i < num_iterations; i++) {
-        matmul_cuda(h_a, h_b, h_c, M, N, K);
+        matmul_custom(h_a, h_b, h_c, M, N, K);
     }
     cudaEventRecord(stop);
     cudaEventSynchronize(stop);
@@ -85,7 +86,7 @@ int main() {
     // Timing cuBLAS
     cudaEventRecord(start);
     for (int i = 0; i < num_iterations; i++) {
-        sgemm_cublas(h_a, h_b, h_c_blas, M, N, K);
+        matmul_cublas(h_a, h_b, h_c_blas, M, N, K);
     }
     cudaEventRecord(stop);
     cudaEventSynchronize(stop);
@@ -106,6 +107,9 @@ int main() {
 
     cudaEventDestroy(start);
     cudaEventDestroy(stop);
+}
 
-    return 0;
+// Wrapper function to be called from Python
+extern "C" void matmul_benchmark_wrapper(float* a, float* b, float* c, const int M, const int N, const int K) {
+    matmul_benchmark(a, b, c, M, N, K);
 }
