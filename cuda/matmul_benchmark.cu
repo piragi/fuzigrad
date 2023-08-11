@@ -1,6 +1,7 @@
 #include <cstdio>
 #include <cublas_v2.h>
 #include <cuda_runtime.h>
+#include <assert.h>
 #include "constants.h"
 
 // Declaration of the custom CUDA kernel function (adjust as needed)
@@ -9,6 +10,11 @@ extern "C" __global__ void matmul_2d_tiling(float* a, float* b, float* c, const 
 // Custom matrix multiplication function
 void matmul_custom(float* a, float* b, float* c, const int M, const int N, const int K) {
     float *d_a, *d_b, *d_c;
+    const int NUMBER_OF_THREADS = 256;
+
+
+    assert(BM == BN);
+    assert((BK * BM) / NUMBER_OF_THREADS % 4 == 0);
 
     cudaMalloc((void **)&d_a, sizeof(float) * M * K);
     cudaMalloc((void **)&d_b, sizeof(float) * K * N);

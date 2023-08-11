@@ -3,8 +3,6 @@
 
 extern "C" __global__ void matmul_2d_tiling(float* a, float* b, float* c, const int M, const int N, const int K) {
     const int number_of_threads = blockDim.x * blockDim.y;
-    const int tile_size = BM * BK;
-
 
     const int c_row = blockIdx.y;
     const int c_col = blockIdx.x;
@@ -30,12 +28,8 @@ extern "C" __global__ void matmul_2d_tiling(float* a, float* b, float* c, const 
 
     const int b_inner_col = idx % (BN / 4);
     const int b_inner_row = idx / (BN / 4);
-    // in the sgemm version its done differently, i dont see a reason why tho
     const int b_stride = (number_of_threads * 4) / BN;
 
-    // to guarantue float4 loads
-    //assert(tile_size / number_of_threads % 4 == 0);
-    
     for (int block_idx = 0; block_idx < K; block_idx += BK) {
         // load 4 floats into local memory (L1 SMEM) 
         // number of elements per tile / number of threads need to be dividable by 4
@@ -55,9 +49,9 @@ extern "C" __global__ void matmul_2d_tiling(float* a, float* b, float* c, const 
         } 
         __syncthreads();
 
-        // move the tile sideways
+        // move a tile sideways
+        // move b tile downwards
         a += BK;
-        // move the tile downwards
         b += BK * N;
 
         for (int dot_idx = 0; dot_idx < BK; dot_idx++) {
