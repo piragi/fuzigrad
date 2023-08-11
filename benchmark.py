@@ -3,10 +3,10 @@ import torch
 import torch.nn.functional as F
 import time
 import sys
-import matmul as op
+import tensor.ops.matmul as op
 import nvtx
 
-from tensor import Tensor
+from tensor.tensor import Tensor
 
 #np.random.seed(1337)
 

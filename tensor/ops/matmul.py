@@ -14,7 +14,6 @@ libmatmul.matmul_2d_wrapper.argtypes = [
     ctypes.c_int,
 ]
 
-# Define the return type (if any)
 libmatmul.matmul_2d_wrapper.restype = None
 
 def matmul_2d(a, b):

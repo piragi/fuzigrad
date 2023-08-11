@@ -1,5 +1,5 @@
 import numpy as np
-from mlops import matmul, add, mul, relu, transpose, mse, relu_backwards
+from tensor.ops.mlops import matmul, add, mul, relu, transpose, mse, relu_backwards
 
 class Tensor():
    def __init__(self, value, op=None, children=None, requires_grad=False):
