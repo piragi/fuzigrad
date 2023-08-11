@@ -1,6 +1,6 @@
 import numpy as np
 
-from tensor import Tensor
+from tensor.tensor import Tensor
 
 class Linear():
     def __init__(self, ninput_features, noutput_features, batch_size):

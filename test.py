@@ -1,12 +1,12 @@
 from math import sqrt
 import torch
 from linear import Linear
-from sgd import SGD
-from value import Value
-from tensor import Tensor
+from tensor.sgd import SGD
+from tensor.value import Value
+from tensor.tensor import Tensor
 import numpy as np
 import torch.nn.functional as F
-import mlops
+import tensor.ops.mlops as mlops
 
 b_torch = torch.Tensor([5.0]).double()
 b_torch.requires_grad = True
