@@ -3,14 +3,15 @@
 #include <cublas_v2.h>
 #include <assert.h>
 #include <cmath>
+#include "constants.h"
 #include "matmul_2d.cu"
 
-void matmul_cuda(float *h_a, float *h_b, float *h_c, int M, int N, int K) {
-    float *d_a, *d_b, *d_c;
+void matmul_cuda(float* h_a, float* h_b, float* h_c, int M, int N, int K) {
+    float* d_a, * d_b, * d_c;
 
-    cudaMalloc((void **)&d_a, sizeof(float) * M * K);
-    cudaMalloc((void **)&d_b, sizeof(float) * K * N);
-    cudaMalloc((void **)&d_c, sizeof(float) * M * N);
+    cudaMalloc((void**)&d_a, sizeof(float) * M * K);
+    cudaMalloc((void**)&d_b, sizeof(float) * K * N);
+    cudaMalloc((void**)&d_c, sizeof(float) * M * N);
 
     cudaMemcpy(d_a, h_a, sizeof(float) * M * K, cudaMemcpyHostToDevice);
     cudaMemcpy(d_b, h_b, sizeof(float) * K * N, cudaMemcpyHostToDevice);
@@ -18,7 +19,7 @@ void matmul_cuda(float *h_a, float *h_b, float *h_c, int M, int N, int K) {
     dim3 block(BM / TM, BN / TN);
     dim3 grid((M + BM - 1) / BM, (N + BN - 1) / BN);
 
-    matmul_2d_tiling<<<grid, block>>>(d_a, d_b, d_c, M, N, K);
+    matmul_2d_tiling << <grid, block >> > (d_a, d_b, d_c, M, N, K);
 
     cudaMemcpy(h_c, d_c, sizeof(float) * M * N, cudaMemcpyDeviceToHost);
 
@@ -27,14 +28,14 @@ void matmul_cuda(float *h_a, float *h_b, float *h_c, int M, int N, int K) {
     cudaFree(d_c);
 }
 
-void sgemm_cublas(float *h_a, float *h_b, float *h_c_blas, int M, int N, int K) {
+void sgemm_cublas(float* h_a, float* h_b, float* h_c_blas, int M, int N, int K) {
     cublasHandle_t handle;
     cublasCreate(&handle);
 
-    float *d_a, *d_b, *d_c;
-    cudaMalloc((void **)&d_a, sizeof(float) * M * K);
-    cudaMalloc((void **)&d_b, sizeof(float) * K * N);
-    cudaMalloc((void **)&d_c, sizeof(float) * M * N);
+    float* d_a, * d_b, * d_c;
+    cudaMalloc((void**)&d_a, sizeof(float) * M * K);
+    cudaMalloc((void**)&d_b, sizeof(float) * K * N);
+    cudaMalloc((void**)&d_c, sizeof(float) * M * N);
 
     cudaMemcpy(d_a, h_a, sizeof(float) * M * K, cudaMemcpyHostToDevice);
     cudaMemcpy(d_b, h_b, sizeof(float) * K * N, cudaMemcpyHostToDevice);
@@ -58,10 +59,10 @@ int main() {
     const int K = 4096;
     const int num_iterations = 100; // Number of iterations for timing
 
-    float *h_a = (float *)malloc(sizeof(float) * M * K);
-    float *h_b = (float *)malloc(sizeof(float) * K * N);
-    float *h_c = (float *)malloc(sizeof(float) * M * N);
-    float *h_c_blas = (float *)malloc(sizeof(float) * M * N);
+    float* h_a = (float*)malloc(sizeof(float) * M * K);
+    float* h_b = (float*)malloc(sizeof(float) * K * N);
+    float* h_c = (float*)malloc(sizeof(float) * M * N);
+    float* h_c_blas = (float*)malloc(sizeof(float) * M * N);
 
     for (int i = 0; i < M * K; i++) h_a[i] = (float)rand() / RAND_MAX;
     for (int i = 0; i < K * N; i++) h_b[i] = (float)rand() / RAND_MAX;

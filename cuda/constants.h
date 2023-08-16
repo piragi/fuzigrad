@@ -5,3 +5,6 @@
 #define BK 16
 #define TM 8
 #define TN 8
+#define WARPSIZE 32
+#define WN 64
+#define WM 64

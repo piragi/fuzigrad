@@ -17,8 +17,8 @@ libmatmul.matmul_benchmark_wrapper.argtypes = [
 libmatmul.matmul_benchmark_wrapper.restype = ctypes.c_float
 
 def matmul_2d_benchmark(n_rows, n_cols):
-    a = np.random.uniform(0, 100, (n_rows, n_cols))
-    b = np.random.uniform(0, 100, (n_rows, n_cols))
+    a = np.random.uniform(1, 100, (n_rows, n_cols))
+    b = np.random.uniform(1, 100, (n_rows, n_cols))
     a = np.array(a, dtype=np.float32, order='C')
     b = np.array(b, dtype=np.float32, order='C')
     M, K = a.shape
@@ -30,4 +30,4 @@ def matmul_2d_benchmark(n_rows, n_cols):
     return flops
 
 
-matmul_2d_benchmark(4096, 4096) 
+matmul_2d_benchmark(128, 128) 
