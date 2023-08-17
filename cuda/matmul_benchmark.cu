@@ -44,7 +44,7 @@ void matmul_custom(float* a, float* b, float* c, const int M, const int N, const
     cudaMemcpy(d_flag_a, &h_flag_n, sizeof(int), cudaMemcpyHostToDevice);
 
     dim3 block(BM / TM, BN / TN);
-    dim3 grid(NUMBER_OF_THREADS);
+    dim3 grid((M + BM - 1) / BM, (N + BN - 1) / BN);
 
     matmul_2d_tiling << <grid, block >> > (d_a, d_b, d_c, M, N, K, d_flag, d_flag_m, d_flag_n, d_flag_a);
 
@@ -158,19 +158,15 @@ extern "C" void matmul_benchmark(float* a, float* b, float* c, const int M, cons
         if (fabs(h_c[i] - h_c_blas[i]) <= 1e-5f) {
             count_correct_elements++;
         }
+        else {
+            printf("Error at index %d,\n", i);
+        }
     }
 
     printf("First element is correct: %d\n", first_element_correct);
     printf("Number of correct elements: %d\n", count_correct_elements);
     printf("Max Error: %f\n", maxError);
     printf("Perf. Difference to cuBLAS: %f%%\n", (gflops_custom / gflops_cublas) * 100.0f);
-
-    for (int i = 0; i < M; i++) {
-        for (int j = 0; j < N; j++) {
-            printf("%.f ", fabs(h_c[i] - h_c_blas[i]));
-        }
-        printf("\n");
-    }
 
     free(h_a);
     free(h_b);

@@ -62,7 +62,7 @@ __device__ void load_SMEM(float* a_local, float* b_local, float* regM, float* re
             }
         }
     }
-    // __syncthreads();
+    __syncthreads();
 }
 
 
