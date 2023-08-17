@@ -2,7 +2,8 @@
 #include <cstdio>
 #include "constants.h"
 
-__device__ void load_GMEM(float* a_local, float* b_local, float* a, float* b, const int N, const int K, int a_stride, int a_inner_row, int a_inner_col, int b_stride, int b_inner_row, int b_inner_col) {
+__device__ void load_GMEM(float* a_local, float* b_local, float* a, float* b, const int N, const int K, int a_stride, int a_inner_row, int a_inner_col, int b_stride, int b_inner_row,
+    int b_inner_col, int* flag_a) {
     // load 4 floats into local memory (L1 SMEM) 
     // number of elements per tile / number of threads need to be dividable by 4
     // (BK * BM) / (number_of_threads) % 4 == 0 
@@ -25,7 +26,7 @@ __device__ void load_GMEM(float* a_local, float* b_local, float* a, float* b, co
 }
 
 __device__ void load_SMEM(float* a_local, float* b_local, float* regM, float* regN, float* thread_results, const int thread_row_subtile, const int thread_col_subtile,
-    const int wm_subtile, const int wn_subtile, const int m_subtiles, const int n_subtiles, const int warp_row, const int warp_col) {
+    const int wm_subtile, const int wn_subtile, const int m_subtiles, const int n_subtiles, const int warp_row, const int warp_col, int* flag_m, int* flag_n) {
     // each thread goes through one TM*TN tiles inside the SMEM block
     // load into registers and compute thread_results
     // each thread computes TM*TN element per warp subtile
@@ -61,11 +62,11 @@ __device__ void load_SMEM(float* a_local, float* b_local, float* regM, float* re
             }
         }
     }
-    __syncthreads();
+    // __syncthreads();
 }
 
 
-extern "C" __global__ void matmul_2d_tiling(float* a, float* b, float* c, const int M, const int N, const int K, int* flag) {
+extern "C" __global__ void matmul_2d_tiling(float* a, float* b, float* c, const int M, const int N, const int K, int* flag, int* flag_m, int* flag_n, int* flag_a) {
     const int number_of_threads = blockDim.x * blockDim.y;
 
     // position of block in grid
@@ -104,9 +105,9 @@ extern "C" __global__ void matmul_2d_tiling(float* a, float* b, float* c, const 
     const int thread_row_subtile = thread_idx_subtile / (wn_subtile / TN);
     const int thread_col_subtile = thread_idx_subtile % (wn_subtile / TN);
 
-    float thread_results[TM * TN * n_subtiles * m_subtiles] = { 0 };
-    float regM[TM * m_subtiles] = { 0 };
-    float regN[TN * n_subtiles] = { 0 };
+    float thread_results[TM * TN * n_subtiles * m_subtiles] = { 0.0 };
+    float regM[TM * m_subtiles] = { 0.0 };
+    float regN[TN * n_subtiles] = { 0.0 };
 
     // move a and b to correct position
     a += c_row * BM * K;
@@ -115,25 +116,16 @@ extern "C" __global__ void matmul_2d_tiling(float* a, float* b, float* c, const 
     c += (c_row * BM + warp_row * WM) * N + c_col * BN + warp_col * WN;
 
     for (int block_idx = 0; block_idx < K; block_idx += BK) {
-        load_GMEM(a_local, b_local, a, b, N, K, a_stride, a_inner_row, a_inner_col, b_stride, b_inner_row, b_inner_col);
+        load_GMEM(a_local, b_local, a, b, N, K, a_stride, a_inner_row, a_inner_col, b_stride, b_inner_row, b_inner_col, flag_a);
 
         // move a tile sideways
         // move b tile downwards
         a += BK;
         b += BK * N;
-        load_SMEM(a_local, b_local, regM, regN, thread_results, thread_row, thread_col, wm_subtile, wn_subtile, m_subtiles, n_subtiles, warp_row, warp_col);
-        __syncthreads();
+        load_SMEM(a_local, b_local, regM, regN, thread_results, thread_row_subtile, thread_col_subtile, wm_subtile, wn_subtile, m_subtiles, n_subtiles, warp_row, warp_col, flag_m, flag_n);
     }
+    __syncthreads();
 
-    int count = 0;
-    // Check for zero value in thread_results
-    for (int i = 0; i < TM * TN; i++) {
-        if (thread_results[i] < 1e-2) {
-            *flag = 1; // Set flag if zero found
-            //return; // Return early
-        }
-        count++;
-    }
 
     // write into GMEM
     for (int wm_idx = 0; wm_idx < m_subtiles; wm_idx++) {

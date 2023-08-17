@@ -5,12 +5,12 @@
 #include "constants.h"
 
 // Declaration of the custom CUDA kernel function (adjust as needed)
-extern "C" __global__ void matmul_2d_tiling(float* a, float* b, float* c, const int M, const int N, const int K, int* flag);
+extern "C" __global__ void matmul_2d_tiling(float* a, float* b, float* c, const int M, const int N, const int K, int* flag, int* flag_m, int* flag_n, int* flag_a);
 
 // Custom matrix multiplication function
 void matmul_custom(float* a, float* b, float* c, const int M, const int N, const int K) {
     float* d_a, * d_b, * d_c;
-    const int NUMBER_OF_THREADS = 256;
+    const int NUMBER_OF_THREADS = 128;
 
 
     assert(BM == BN);
@@ -28,20 +28,38 @@ void matmul_custom(float* a, float* b, float* c, const int M, const int N, const
     cudaMalloc(&d_flag, sizeof(int));
     cudaMemcpy(d_flag, &h_flag, sizeof(int), cudaMemcpyHostToDevice);
 
-    dim3 block(BM / TM, BN / TN);
-    dim3 grid((M + BM - 1) / BM, (N + BN - 1) / BN);
+    int h_flag_m = 0;
+    int* d_flag_m;
+    cudaMalloc(&d_flag_m, sizeof(int));
+    cudaMemcpy(d_flag_m, &h_flag_m, sizeof(int), cudaMemcpyHostToDevice);
 
-    matmul_2d_tiling << <grid, block >> > (d_a, d_b, d_c, M, N, K, d_flag);
+    int h_flag_n = 0;
+    int* d_flag_n;
+    cudaMalloc(&d_flag_n, sizeof(int));
+    cudaMemcpy(d_flag_n, &h_flag_n, sizeof(int), cudaMemcpyHostToDevice);
+
+    int h_flag_a = 0;
+    int* d_flag_a;
+    cudaMalloc(&d_flag_a, sizeof(int));
+    cudaMemcpy(d_flag_a, &h_flag_n, sizeof(int), cudaMemcpyHostToDevice);
+
+    dim3 block(BM / TM, BN / TN);
+    dim3 grid(NUMBER_OF_THREADS);
+
+    matmul_2d_tiling << <grid, block >> > (d_a, d_b, d_c, M, N, K, d_flag, d_flag_m, d_flag_n, d_flag_a);
 
     cudaMemcpy(c, d_c, sizeof(float) * M * N, cudaMemcpyDeviceToHost);
     cudaMemcpy(&h_flag, d_flag, sizeof(int), cudaMemcpyDeviceToHost);
+    cudaMemcpy(&h_flag_m, d_flag_m, sizeof(int), cudaMemcpyDeviceToHost);
+    cudaMemcpy(&h_flag_n, d_flag_n, sizeof(int), cudaMemcpyDeviceToHost);
+    cudaMemcpy(&h_flag_a, d_flag_a, sizeof(int), cudaMemcpyDeviceToHost);
 
-    if (h_flag) {
-        printf("Zero value encountered in thread_results\n");
-    }
 
     // Clean up
     cudaFree(d_flag);
+    cudaFree(d_flag_m);
+    cudaFree(d_flag_n);
+    cudaFree(d_flag_a);
     cudaFree(d_a);
     cudaFree(d_b);
     cudaFree(d_c);
