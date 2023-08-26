@@ -21,7 +21,6 @@ __device__ void load_GMEM(float* a_local, float* b_local, float* a, float* b, co
         reinterpret_cast<float4*>(&b_local[(b_inner_row + offset) * BN + b_inner_col * 4])[0] =
             reinterpret_cast<float4*>(&b[(b_inner_row + offset) * N + b_inner_col * 4])[0];
     }
-    __syncthreads();
 
 }
 
@@ -62,7 +61,6 @@ __device__ void load_SMEM(float* a_local, float* b_local, float* regM, float* re
             }
         }
     }
-    __syncthreads();
 }
 
 
@@ -117,15 +115,14 @@ extern "C" __global__ void matmul_2d_tiling(float* a, float* b, float* c, const 
 
     for (int block_idx = 0; block_idx < K; block_idx += BK) {
         load_GMEM(a_local, b_local, a, b, N, K, a_stride, a_inner_row, a_inner_col, b_stride, b_inner_row, b_inner_col, flag_a);
-
+        __syncthreads();
         // move a tile sideways
         // move b tile downwards
+        load_SMEM(a_local, b_local, regM, regN, thread_results, thread_row_subtile, thread_col_subtile, wm_subtile, wn_subtile, m_subtiles, n_subtiles, warp_row, warp_col, flag_m, flag_n);
         a += BK;
         b += BK * N;
-        load_SMEM(a_local, b_local, regM, regN, thread_results, thread_row_subtile, thread_col_subtile, wm_subtile, wn_subtile, m_subtiles, n_subtiles, warp_row, warp_col, flag_m, flag_n);
+        __syncthreads();
     }
-    __syncthreads();
-
 
     // write into GMEM
     for (int wm_idx = 0; wm_idx < m_subtiles; wm_idx++) {
@@ -139,4 +136,6 @@ extern "C" __global__ void matmul_2d_tiling(float* a, float* b, float* c, const 
             }
         }
     }
+    __syncthreads();
+
 }
