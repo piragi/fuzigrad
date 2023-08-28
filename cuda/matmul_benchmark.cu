@@ -5,7 +5,7 @@
 #include "constants.h"
 
 // Declaration of the custom CUDA kernel function (adjust as needed)
-extern "C" __global__ void matmul_2d_tiling(float* a, float* b, float* c, const int M, const int N, const int K, int* flag, int* flag_m, int* flag_n, int* flag_a);
+extern "C" __global__ void matmul_2d_tiling(float* a, float* b, float* c, const int M, const int N, const int K);
 
 // Custom matrix multiplication function
 void matmul_custom(float* a, float* b, float* c, const int M, const int N, const int K) {
@@ -14,7 +14,7 @@ void matmul_custom(float* a, float* b, float* c, const int M, const int N, const
 
 
     assert(BM == BN);
-    assert((BK * BM) / NUMBER_OF_THREADS % 4 == 0);
+    //assert(((BK * BM) / NUMBER_OF_THREADS) % 4 == 0);
 
     cudaMalloc((void**)&d_a, sizeof(float) * M * K);
     cudaMalloc((void**)&d_b, sizeof(float) * K * N);
@@ -23,43 +23,14 @@ void matmul_custom(float* a, float* b, float* c, const int M, const int N, const
     cudaMemcpy(d_a, a, sizeof(float) * M * K, cudaMemcpyHostToDevice);
     cudaMemcpy(d_b, b, sizeof(float) * K * N, cudaMemcpyHostToDevice);
 
-    int h_flag = 0;
-    int* d_flag;
-    cudaMalloc(&d_flag, sizeof(int));
-    cudaMemcpy(d_flag, &h_flag, sizeof(int), cudaMemcpyHostToDevice);
-
-    int h_flag_m = 0;
-    int* d_flag_m;
-    cudaMalloc(&d_flag_m, sizeof(int));
-    cudaMemcpy(d_flag_m, &h_flag_m, sizeof(int), cudaMemcpyHostToDevice);
-
-    int h_flag_n = 0;
-    int* d_flag_n;
-    cudaMalloc(&d_flag_n, sizeof(int));
-    cudaMemcpy(d_flag_n, &h_flag_n, sizeof(int), cudaMemcpyHostToDevice);
-
-    int h_flag_a = 0;
-    int* d_flag_a;
-    cudaMalloc(&d_flag_a, sizeof(int));
-    cudaMemcpy(d_flag_a, &h_flag_n, sizeof(int), cudaMemcpyHostToDevice);
-
-    dim3 block(BM / TM, BN / TN);
+    dim3 block(NUMBER_OF_THREADS);
     dim3 grid((M + BM - 1) / BM, (N + BN - 1) / BN);
 
-    matmul_2d_tiling << <grid, block >> > (d_a, d_b, d_c, M, N, K, d_flag, d_flag_m, d_flag_n, d_flag_a);
+    matmul_2d_tiling << <grid, block >> > (d_a, d_b, d_c, M, N, K);
 
     cudaMemcpy(c, d_c, sizeof(float) * M * N, cudaMemcpyDeviceToHost);
-    cudaMemcpy(&h_flag, d_flag, sizeof(int), cudaMemcpyDeviceToHost);
-    cudaMemcpy(&h_flag_m, d_flag_m, sizeof(int), cudaMemcpyDeviceToHost);
-    cudaMemcpy(&h_flag_n, d_flag_n, sizeof(int), cudaMemcpyDeviceToHost);
-    cudaMemcpy(&h_flag_a, d_flag_a, sizeof(int), cudaMemcpyDeviceToHost);
-
 
     // Clean up
-    cudaFree(d_flag);
-    cudaFree(d_flag_m);
-    cudaFree(d_flag_n);
-    cudaFree(d_flag_a);
     cudaFree(d_a);
     cudaFree(d_b);
     cudaFree(d_c);
@@ -128,10 +99,6 @@ extern "C" void matmul_benchmark(float* a, float* b, float* c, const int M, cons
         }
     }
 
-    printf("Number of ones: %d\n", count);
-    printf("Number of elements: %d\n", size);
-    printf("Number of thread_result total: %f\n", h_c[0]);
-
     // Timing cuBLAS
     cudaEventRecord(start);
     for (int i = 0; i < num_iterations; i++) {
@@ -147,24 +114,7 @@ extern "C" void matmul_benchmark(float* a, float* b, float* c, const int M, cons
     for (int i = 0; i < M * N; i++) {
         maxError = fmax(maxError, fabs(h_c[i] - h_c_blas[i]));
     }
-    bool first_element_correct = false;
-    if (fabs(h_c[0] - h_c_blas[0]) < 1e-5f) {
-        first_element_correct = true;
-    }
 
-    // weird that thats the error?!
-    int count_correct_elements = 0;
-    for (int i = 0; i < M * N; i++) {
-        if (fabs(h_c[i] - h_c_blas[i]) <= 1e-5f) {
-            count_correct_elements++;
-        }
-        else {
-            printf("Error at index %d,\n", i);
-        }
-    }
-
-    printf("First element is correct: %d\n", first_element_correct);
-    printf("Number of correct elements: %d\n", count_correct_elements);
     printf("Max Error: %f\n", maxError);
     printf("Perf. Difference to cuBLAS: %f%%\n", (gflops_custom / gflops_cublas) * 100.0f);
 

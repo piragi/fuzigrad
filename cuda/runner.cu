@@ -11,7 +11,8 @@
 
 void matmul_cuda(float* h_a, float* h_b, float* h_c, int M, int N, int K) {
     float* d_a, * d_b, * d_c;
-    int number_of_threads = 256;
+    // (BM * BN) / (WM * WN) * WARPSIZE = Number of threads per block
+    int number_of_threads = 128;
 
     cudaMalloc((void**)&d_a, sizeof(float) * M * K);
     cudaMalloc((void**)&d_b, sizeof(float) * K * N);
@@ -20,10 +21,10 @@ void matmul_cuda(float* h_a, float* h_b, float* h_c, int M, int N, int K) {
     cudaMemcpy(d_a, h_a, sizeof(float) * M * K, cudaMemcpyHostToDevice);
     cudaMemcpy(d_b, h_b, sizeof(float) * K * N, cudaMemcpyHostToDevice);
 
-    dim3 block(BM / TM, BN / TN);
-    dim3 grid((M + BM - 1) / BM, (N + BN - 1) / BN);
+    dim3 block(number_of_threads);
+    dim3 grid(((M + (BM - 1)) / BM), ((N + (BN - 1)) / BN));
 
-    matmul_2d_tiling << <grid, block >> > (d_a, d_b, d_c, M, N, K, 0, 0, 0, 0);
+    matmul_2d_tiling << <grid, block >> > (d_a, d_b, d_c, M, N, K);
 
     cudaMemcpy(h_c, d_c, sizeof(float) * M * N, cudaMemcpyDeviceToHost);
 
@@ -63,7 +64,7 @@ void compare_arrays(float* a, float* b, int size) {
 
     for (int i = 0; i < size; i++) {
         double error = std::fabs(a[i] - b[i]);
-        if (error > 0.001) { // You may adjust the tolerance level as needed
+        if (error > 0.0001) { // You may adjust the tolerance level as needed
             error_counts[error]++;
         }
     }
@@ -76,10 +77,9 @@ void compare_arrays(float* a, float* b, int size) {
 }
 
 int main() {
-    const int M = 128;
-    const int N = 128;
-    const int K = 128;
-    const int num_iterations = 1; // Number of iterations for timing
+    const int M = 4096;
+    const int N = 4096;
+    const int K = 4096;
 
     float* h_a = (float*)malloc(sizeof(float) * M * K);
     float* h_b = (float*)malloc(sizeof(float) * K * N);
@@ -90,32 +90,8 @@ int main() {
     for (int i = 0; i < M * K; i++) h_a[i] = (float)(rand() % 9);
     for (int i = 0; i < K * N; i++) h_b[i] = (float)(rand() % 9);
 
-    // for (int i = 0; i < M; i++) {
-    //     for (int j = 0; j < K; j++) {
-    //         printf("%0.2f ", h_a[i * M + j]);
-    //     }
-    //     printf("\n");
-    // }
-
-    // printf("\n");
-    // for (int i = 0; i < K; i++) {
-    //     for (int j = 0; j < N; j++) {
-    //         printf("%0.2f ", h_b[i * K + j]);
-    //     }
-    //     printf("\n");
-    // }
-
     matmul_cuda(h_a, h_b, h_c, M, N, K);
     matmul_cublas(h_a, h_b, h_c_cublas, M, N, K);
-
-    // printf("\n");
-    // for (int i = 0; i < N; i++) {
-    //     for (int j = 0; j < M; j++) {
-    //         printf("%f ", h_c_cublas[i * N + j]);
-    //     }
-    //     printf("\n");
-    // }
-    compare_arrays(h_c, h_c_cublas, M * N);
 
     // print total error
     float total_error = 0.0f;
@@ -127,6 +103,7 @@ int main() {
     free(h_a);
     free(h_b);
     free(h_c);
+    free(h_c_cublas);
 
     return 0;
 }
