@@ -2,15 +2,10 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 import time
-import sys
 import tensor.ops.matmul as op
-import nvtx
-
 from tensor.tensor import Tensor
 
 #np.random.seed(1337)
-
-@nvtx.annotate(color="blue")
 def mse_time_comparison(n_rows, n_cols):
     rand1 = np.random.uniform(0, 100, (n_rows, n_cols))
     rand2 = np.random.uniform(0, 100, (n_rows, n_cols))

@@ -25,7 +25,6 @@ void matmul_custom(float* a, float* b, float* c, const int M, const int N, const
 
     dim3 block(NUMBER_OF_THREADS);
     dim3 grid((M + BM - 1) / BM, (N + BN - 1) / BN);
-
     matmul_2d_tiling << <grid, block >> > (d_a, d_b, d_c, M, N, K);
 
     cudaMemcpy(c, d_c, sizeof(float) * M * N, cudaMemcpyDeviceToHost);
@@ -89,15 +88,6 @@ extern "C" void matmul_benchmark(float* a, float* b, float* c, const int M, cons
     cudaEventElapsedTime(&milliseconds, start, stop);
     float gflops_custom = (2.0f * M * N * K * num_iterations) / (milliseconds * 1e6);
     printf("Custom kernel: %f ms, %f GFLOPS\n", milliseconds, gflops_custom);
-
-    int count = 0;
-    int size = 0;
-    for (int i = 0; i < M * N; i++) {
-        size++;
-        if (h_c[i] == 1.0f) {
-            count++;
-        }
-    }
 
     // Timing cuBLAS
     cudaEventRecord(start);
