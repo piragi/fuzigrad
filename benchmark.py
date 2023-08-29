@@ -48,4 +48,9 @@ def matmul_time(n_rows, n_cols):
     assert np.allclose(c, c_torch_np)
 
 #mse_time_comparison(20000, 20000)  # specify number of rows and columns for the test tensors
+matmul_time(128, 128) 
+matmul_time(256, 256) 
+matmul_time(512, 512) 
+matmul_time(1024, 1024) 
+matmul_time(2048, 2048) 
 matmul_time(4096, 4096) 

@@ -25,7 +25,7 @@ __device__ void load_GMEM(float* a_local, float* b_local, float* a, float* b, co
 }
 
 __device__ void load_SMEM(float* a_local, float* b_local, float* regM, float* regN, float* thread_results, const int thread_row_subtile, const int thread_col_subtile,
-    const int wm_subtile, const int wn_subtile, const int m_subtiles, const int n_subtiles, const int warp_row, const int warp_col) {
+    const int wm_subtile, const int wn_subtile,  const int warp_row, const int warp_col) {
     // each thread goes through one TM*TN tiles inside the SMEM block
     // load into registers and compute thread_results
     // each thread computes TM*TN element per warp subtile
@@ -35,14 +35,14 @@ __device__ void load_SMEM(float* a_local, float* b_local, float* regM, float* re
     // position in warp = warprow * WM + warpcol
     // position in subtile = wn
     for (int dot_idx = 0; dot_idx < BK; dot_idx++) {
-        for (int wm_idx = 0; wm_idx < m_subtiles; wm_idx++) {
+        for (int wm_idx = 0; wm_idx < M_SUBTILES; wm_idx++) {
             for (int a_idx = 0; a_idx < TM; a_idx++) {
                 int pos_warp = warp_row * WM;
                 int pos_warp_subtile = wm_idx * wm_subtile;
                 regM[wm_idx * TM + a_idx] = a_local[(dot_idx * BM) + pos_warp + pos_warp_subtile + thread_row_subtile * TM + a_idx];
             }
         }
-        for (int wn_idx = 0; wn_idx < n_subtiles; wn_idx++) {
+        for (int wn_idx = 0; wn_idx < N_SUBTILES; wn_idx++) {
             for (int b_idx = 0; b_idx < TN; b_idx++) {
                 int pos_warp = warp_col * WN;
                 int pos_warp_subtile = wn_idx * wn_subtile;
@@ -50,11 +50,11 @@ __device__ void load_SMEM(float* a_local, float* b_local, float* regM, float* re
             }
         }
 
-        for (int wm_idx = 0; wm_idx < m_subtiles; wm_idx++) {
-            for (int wn_idx = 0; wn_idx < n_subtiles; wn_idx++) {
+        for (int wm_idx = 0; wm_idx < M_SUBTILES; wm_idx++) {
+            for (int wn_idx = 0; wn_idx < N_SUBTILES; wn_idx++) {
                 for (int res_idx_m = 0; res_idx_m < TM; res_idx_m++) {
                     for (int res_idx_n = 0; res_idx_n < TN; res_idx_n++) {
-                        thread_results[(wm_idx * TM + res_idx_m) * (TN * n_subtiles) + (wn_idx * TN) + res_idx_n] +=
+                        thread_results[(wm_idx * TM + res_idx_m) * (TN * N_SUBTILES) + (wn_idx * TN) + res_idx_n] +=
                             regM[wm_idx * TM + res_idx_m] * regN[wn_idx * TN + res_idx_n];
                     }
                 }
@@ -92,18 +92,16 @@ extern "C" __global__ void matmul_2d_tiling(float* a, float* b, float* c, const 
 
     const int number_of_warps = number_of_threads / WARPSIZE;
 
-    const int n_subtiles = 2;
-    const int m_subtiles = (WM * WN) / (WARPSIZE * TM * TN * n_subtiles);
-    const int wn_subtile = WN / n_subtiles;
-    const int wm_subtile = WM / m_subtiles;
+    const int wn_subtile = WN / N_SUBTILES;
+    const int wm_subtile = WM / M_SUBTILES;
 
     const int thread_idx_subtile = idx % (WARPSIZE);
     const int thread_row_subtile = thread_idx_subtile / (wn_subtile / TN);
     const int thread_col_subtile = thread_idx_subtile % (wn_subtile / TN);
 
-    float thread_results[TM * TN * n_subtiles * m_subtiles] = { 0.0 };
-    float regM[TM * m_subtiles] = { 0.0 };
-    float regN[TN * n_subtiles] = { 0.0 };
+    float thread_results[TM * TN * N_SUBTILES * M_SUBTILES] = { 0.0 };
+    float regM[TM * M_SUBTILES] = { 0.0 };
+    float regN[TN * N_SUBTILES] = { 0.0 };
 
     // move a and b to correct position
     a += c_row * BM * K;
@@ -116,20 +114,20 @@ extern "C" __global__ void matmul_2d_tiling(float* a, float* b, float* c, const 
         __syncthreads();
         // move a tile sideways
         // move b tile downwards
-        load_SMEM(a_local, b_local, regM, regN, thread_results, thread_row_subtile, thread_col_subtile, wm_subtile, wn_subtile, m_subtiles, n_subtiles, warp_row, warp_col);
+        load_SMEM(a_local, b_local, regM, regN, thread_results, thread_row_subtile, thread_col_subtile, wm_subtile, wn_subtile, warp_row, warp_col);
         a += BK;
         b += BK * N;
         __syncthreads();
     }
 
     // write into GMEM
-    for (int wm_idx = 0; wm_idx < m_subtiles; wm_idx++) {
-        for (int wn_idx = 0; wn_idx < n_subtiles; wn_idx++) {
+    for (int wm_idx = 0; wm_idx < M_SUBTILES; wm_idx++) {
+        for (int wn_idx = 0; wn_idx < N_SUBTILES; wn_idx++) {
             float* c_interim = c + (wm_idx * wm_subtile) * N + wn_idx * wn_subtile;
             for (int res_idx_m = 0; res_idx_m < TM; res_idx_m++) {
                 for (int res_idx_n = 0; res_idx_n < TN; res_idx_n++) {
                     c_interim[(thread_row_subtile * TM + res_idx_m) * N + thread_col_subtile * TN + res_idx_n] =
-                        thread_results[(wm_idx * TM + res_idx_m) * (TN * n_subtiles) + wn_idx * TN + res_idx_n];
+                        thread_results[(wm_idx * TM + res_idx_m) * (TN * N_SUBTILES) + wn_idx * TN + res_idx_n];
                 }
             }
         }

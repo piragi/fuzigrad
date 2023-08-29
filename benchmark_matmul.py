@@ -30,4 +30,9 @@ def matmul_2d_benchmark(n_rows, n_cols):
     return flops
 
 
+matmul_2d_benchmark(128, 128) 
+matmul_2d_benchmark(256, 256) 
+matmul_2d_benchmark(512, 512) 
+matmul_2d_benchmark(1024, 1024) 
+matmul_2d_benchmark(2048, 2048) 
 matmul_2d_benchmark(4096, 4096) 
