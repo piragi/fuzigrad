@@ -7,7 +7,7 @@
 extern "C" __global__ void matmul_2d_tiling(float* a, float* b, float* c, const int M, const int N, const int K);
 
 // Custom matrix multiplication function
-void matmul(float* a, float* b, float* c, const int M, const int N, const int K) {
+extern "C" void matmul(float* a, float* b, float* c, const int M, const int N, const int K) {
     float* d_a, * d_b, * d_c;
 
     assert(BM == BN);

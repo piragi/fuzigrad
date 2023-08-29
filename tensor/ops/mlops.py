@@ -1,6 +1,7 @@
 import pyopencl as cl
 import numpy as np
 import time
+import tensor.ops.matmul as cuda_matmul
 
 context = cl.create_some_context()
 device = context.devices[0]
@@ -42,45 +43,7 @@ def transpose(tensor):
     return transposed_np
 
 def matmul( tensor1, tensor2):
-    a = tensor1.value.astype(np.float32)
-    b = tensor2.value.astype(np.float32)
-
-    assert tensor1.shape[1] == tensor2.shape[0]
-
-    # TODO: tiling instead of fetching every cell from global memory
-    matmul = cl.Program(context, """
-        __kernel void matmul2d(__global const float* a, __global const float* b, __global float* c, const int N, const int K, const int M) {
-            int row = get_global_id(0);
-            int column = get_global_id(1);
-
-            float sum = 0.0f;
-            for (int i = 0; i < N; i++) {
-                sum += a[row * N + i] * b[i * K + column];
-            }
-
-            c[row * K + column] = sum;
-        }
-
-        __kernel void matmul(__global const float* a, __global const float* b, __global float* c, const int M, const int N, const int K) {
-            // position in c
-            const int x = get_group_id(0)
-        }
-    """).build()
-    warp_size = matmul.matmul2d.get_work_group_info(
-    cl.kernel_work_group_info.PREFERRED_WORK_GROUP_SIZE_MULTIPLE, 
-    device)
-    print(f'Warp size: {warp_size}')
-    a_buf, b_buf = create_buffer( a, b)
-    c_np = np.zeros((a.shape[0], b.shape[1])).astype(np.float32)
-    c_buf = cl.Buffer(context, mf.WRITE_ONLY, c_np.nbytes)
-    start_time = time.time()
-    matmul.matmul2d(queue, c_np.shape, None, a_buf, b_buf, c_buf, np.int32(a.shape[1]), np.int32(b.shape[1]), np.int32(a.shape[0]))
-    matmul.matmul(queue, c_np.shape, (64, ), a_buf, b_buf, c_buf, np.int32(a.shape[1]), np.int32(b.shape[1]), np.int32(a.shape[0]))
-
-    print(f'Matmul: {time.time() - start_time} seconds')
-
-    cl.enqueue_copy(queue, c_np, c_buf)
-    return c_np
+    return cuda_matmul.matmul_2d(tensor1, tensor2)
 
 def add( tensor1, tensor2):
     a = tensor1.value.astype(np.float32)
