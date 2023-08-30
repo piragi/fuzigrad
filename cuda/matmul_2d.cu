@@ -125,9 +125,11 @@ extern "C" __global__ void matmul_2d_tiling(float* a, float* b, float* c, const 
         for (int wn_idx = 0; wn_idx < N_SUBTILES; wn_idx++) {
             float* c_interim = c + (wm_idx * wm_subtile) * N + wn_idx * wn_subtile;
             for (int res_idx_m = 0; res_idx_m < TM; res_idx_m++) {
-                for (int res_idx_n = 0; res_idx_n < TN; res_idx_n += 4) {
-                    float4 results = reinterpret_cast<float4*>(&thread_results[(wm_idx * TM + res_idx_m) * (TN * N_SUBTILES) + wn_idx * TN + res_idx_n])[0];
-                    reinterpret_cast<float4*>(&c_interim[(thread_row_subtile * TM + res_idx_m) * N + thread_col_subtile * TN + res_idx_n])[0] = results;
+                for (int res_idx_n = 0; res_idx_n < TN; res_idx_n++) {
+                    // TODO: investigate why using float4 makes it slower rather than faster? 
+                    // diff of 3%
+                    // reinterpret_cast<float4*>(&c_interim[(thread_row_subtile * TM + res_idx_m) * N + thread_col_subtile * TN + res_idx_n])[0] = reinterpret_cast<float4*>(&thread_results[(wm_idx * TM + res_idx_m) * (TN * N_SUBTILES) + wn_idx * TN + res_idx_n])[0]; 
+                    c_interim[(thread_row_subtile * TM + res_idx_m) * N + thread_col_subtile * TN + res_idx_n] = thread_results[(wm_idx * TM + res_idx_m) * (TN * N_SUBTILES) + wn_idx * TN + res_idx_n]; 
                 }
             }
         }
