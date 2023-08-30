@@ -23,6 +23,7 @@ extern "C" void matmul(float* a, float* b, float* c, const int M, const int N, c
     dim3 block(NUMBER_OF_THREADS);
     dim3 grid((M + BM - 1) / BM, (N + BN - 1) / BN);
     matmul_2d_tiling << <grid, block >> > (d_a, d_b, d_c, M, N, K);
+    cudaDeviceSynchronize();
 
     cudaMemcpy(c, d_c, sizeof(float) * M * N, cudaMemcpyDeviceToHost);
 
