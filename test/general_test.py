@@ -1,3 +1,6 @@
+import sys
+sys.path.append('/home/piragi/projects/fuzigrad')
+
 import pytest
 from math import sqrt
 import torch
@@ -56,16 +59,6 @@ def test_tensor_sub():
     c = a - b
     c_torch = a_torch - b_torch
     assert np.allclose(c.value, c_torch.numpy()), "Tensor subtraction doesn't match with PyTorch."
-
-
-def test_matmul():
-    a = Tensor([[1,2,3,4], [1,2,3,4]])
-    b = Tensor([[1,2,3,4], [1,2,3,4]])
-    c = a @ b
-    a_torch = torch.tensor([[1,2,3,4], [1,2,3,4]])
-    b_torch = torch.tensor([[1,2,3,4], [1,2,3,4]])
-    c_torch = a_torch @ b_torch
-    assert np.allclose(c.value, c_torch.numpy()), "Matrix Multiplication doesn't match with PyTorch."
 
 def test_relu():
     a = Tensor([[1, -1], [-1, 1]])
