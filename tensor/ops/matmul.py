@@ -52,6 +52,8 @@ def matmul_2d(a, b):
 def get_next_power_of_two(x):
     if (x == 0):
         return 1
+    if (x < 128):
+        return 128
     if (x & (x-1) == 0):
         return x
     power = 1

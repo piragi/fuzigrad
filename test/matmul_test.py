@@ -30,5 +30,4 @@ def matmul(rand):
     b_torch = torch.tensor(rand)
     c = a @ b
     c_torch = a_torch @ b_torch
-    print(c.value)
     assert np.allclose(c.value, c_torch.numpy(), 0.01), "Matmul doesn't match with PyTorch."
