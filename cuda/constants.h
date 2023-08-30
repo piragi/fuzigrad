@@ -8,6 +8,12 @@
 #define WARPSIZE 32
 #define WN 64
 #define WM 64
-#define NUMBER_OF_THREADS 128
 #define N_SUBTILES 2
 #define M_SUBTILES (WM * WN) / (WARPSIZE * TM * TN * N_SUBTILES)
+
+// one grid per block
+// one grid calculates BM * BN results
+// (BM * BN) / (WN * WM) warptiles
+// WARPSIZE threads per warp and warptile
+// therefore:
+#define NUMBER_OF_THREADS ((BM * BN) / (WN * WM)) * WARPSIZE

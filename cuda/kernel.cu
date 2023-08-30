@@ -3,6 +3,17 @@
 #include <assert.h>
 #include "constants.h"
 
+
+#define CUDA_CHECK_ERROR(call) \
+    do { \
+        cudaError_t err = call; \
+        if (err != cudaSuccess) { \
+            fprintf(stderr, "CUDA error in %s:%d: %s\n", __FILE__, __LINE__, cudaGetErrorString(err)); \
+            exit(EXIT_FAILURE); \
+        } \
+    } while(0)
+
+
 // Declaration of the custom CUDA kernel function (adjust as needed)
 extern "C" __global__ void matmul_2d_tiling(float* a, float* b, float* c, const int M, const int N, const int K);
 
@@ -12,6 +23,7 @@ extern "C" void matmul(float* a, float* b, float* c, const int M, const int N, c
 
     assert(BM == BN);
     assert(((BK * BM) / NUMBER_OF_THREADS) % 4 == 0);
+    assert((WM * WN) / (TM * TN * WARPSIZE) >= N_SUBTILES);
 
     cudaMalloc((void**)&d_a, sizeof(float) * M * K);
     cudaMalloc((void**)&d_b, sizeof(float) * K * N);
@@ -23,6 +35,7 @@ extern "C" void matmul(float* a, float* b, float* c, const int M, const int N, c
     dim3 block(NUMBER_OF_THREADS);
     dim3 grid((M + BM - 1) / BM, (N + BN - 1) / BN);
     matmul_2d_tiling << <grid, block >> > (d_a, d_b, d_c, M, N, K);
+    CUDA_CHECK_ERROR(cudaPeekAtLastError());
     cudaDeviceSynchronize();
 
     cudaMemcpy(c, d_c, sizeof(float) * M * N, cudaMemcpyDeviceToHost);

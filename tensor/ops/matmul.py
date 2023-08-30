@@ -36,8 +36,6 @@ def matmul_2d(a, b):
     a_ext[:M, :K] = a.value
     b_ext[:K, :N] = b.value
 
-    print(a_ext)
-
     # Ensure the matrices are of the correct data type and are contiguous in memory
     a = np.array(a_ext, dtype=np.float32, order='C')
     b = np.array(b_ext, dtype=np.float32, order='C')
