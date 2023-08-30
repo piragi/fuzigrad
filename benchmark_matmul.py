@@ -4,7 +4,7 @@ import numpy as np
 # Load the shared library
 libmatmul = ctypes.CDLL('./cuda/libmatmul_benchmark.so')
 # Define the argument types for the matmul_2d_benchmark function
-libmatmul.matmul_benchmark_wrapper.argtypes = [
+libmatmul.matmul_benchmark.argtypes = [
     np.ctypeslib.ndpointer(dtype=np.float32, flags="C_CONTIGUOUS"),
     np.ctypeslib.ndpointer(dtype=np.float32, flags="C_CONTIGUOUS"),
     np.ctypeslib.ndpointer(dtype=np.float32, flags="C_CONTIGUOUS"),
@@ -14,7 +14,7 @@ libmatmul.matmul_benchmark_wrapper.argtypes = [
 ]
 
 # Define the return type
-libmatmul.matmul_benchmark_wrapper.restype = ctypes.c_float
+libmatmul.matmul_benchmark.restype = ctypes.c_float
 
 def matmul_2d_benchmark(n_rows, n_cols):
     a = np.random.uniform(1, 100, (n_rows, n_cols))
@@ -26,7 +26,7 @@ def matmul_2d_benchmark(n_rows, n_cols):
     assert K == K_
     c = np.empty((M, N), dtype=np.float32, order='C')
 
-    flops = libmatmul.matmul_benchmark_wrapper(a, b, c, M, N, K)    
+    flops = libmatmul.matmul_benchmark(a, b, c, M, N, K)    
     return flops
 
 
