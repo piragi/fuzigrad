@@ -33,7 +33,7 @@ void matmul_cublas(float* a, float* b, float* c, const int M, const int N, const
 
 // Benchmarking function
 extern "C" void matmul_benchmark(float* a, float* b, float* c, const int M, const int N, const int K) {
-    const int num_iterations = 100; // Number of iterations for timing
+    const int num_iterations = 50; // Number of iterations for timing
 
     float* h_a = (float*)malloc(sizeof(float) * M * K);
     float* h_b = (float*)malloc(sizeof(float) * K * N);
@@ -53,11 +53,13 @@ extern "C" void matmul_benchmark(float* a, float* b, float* c, const int M, cons
         matmul(h_a, h_b, h_c, M, N, K);
     }
     cudaEventRecord(stop);
+
+    cudaEventSynchronize(start);
     cudaEventSynchronize(stop);
     float milliseconds;
     cudaEventElapsedTime(&milliseconds, start, stop);
-    float gflops_custom = (2.0f * M * N * K * num_iterations) / (milliseconds * 1e6);
-    printf("Custom kernel: %f ms, %f GFLOPS\n", milliseconds, gflops_custom);
+    float tflops_custom = (2.0f * M * N * K * num_iterations * 1e-9) / (milliseconds);
+    printf("Custom kernel: %f ms, %f TFLOPS\n", milliseconds, tflops_custom);
 
     // Timing cuBLAS
     cudaEventRecord(start);
@@ -65,10 +67,11 @@ extern "C" void matmul_benchmark(float* a, float* b, float* c, const int M, cons
         matmul_cublas(h_a, h_b, h_c_blas, M, N, K);
     }
     cudaEventRecord(stop);
+    cudaEventSynchronize(start);
     cudaEventSynchronize(stop);
     cudaEventElapsedTime(&milliseconds, start, stop);
-    float gflops_cublas = (2.0f * M * N * K * num_iterations) / (milliseconds * 1e6);
-    printf("cuBLAS: %f ms, %f GFLOPS\n", milliseconds, gflops_cublas);
+    float tflops_cublas = (2.0f * M * N * K * num_iterations * 1e-9) / (milliseconds);
+    printf("cuBLAS: %f ms, %f TFLOPS\n", milliseconds, tflops_cublas);
 
     float maxError = 0.0f;
     for (int i = 0; i < M * N; i++) {
@@ -76,7 +79,7 @@ extern "C" void matmul_benchmark(float* a, float* b, float* c, const int M, cons
     }
 
     printf("Max Error: %f\n", maxError);
-    printf("Perf. Difference to cuBLAS: %f%%\n", (gflops_custom / gflops_cublas) * 100.0f);
+    printf("Perf. Difference to cuBLAS: %f%%\n", (tflops_custom / tflops_cublas) * 100.0f);
     printf("----\n");
     free(h_a);
     free(h_b);

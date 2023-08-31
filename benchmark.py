@@ -5,7 +5,6 @@ import time
 import tensor.ops.matmul as op
 from tensor.tensor import Tensor
 
-#np.random.seed(1337)
 def mse_time_comparison(n_rows, n_cols):
     rand1 = np.random.uniform(0, 100, (n_rows, n_cols))
     rand2 = np.random.uniform(0, 100, (n_rows, n_cols))
