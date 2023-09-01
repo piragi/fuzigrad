@@ -1,6 +1,6 @@
 #include <assert.h>
 #include <cstdio>
-#include "constants.h"
+#include "../constants.h"
 
 __device__ void load_GMEM(float* a_local, float* b_local, float* a, float* b, const int N, const int K, int a_stride, int a_inner_row, int a_inner_col, int b_stride, int b_inner_row,
     int b_inner_col) {
