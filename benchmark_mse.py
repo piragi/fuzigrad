@@ -2,21 +2,20 @@ import ctypes
 import numpy as np
 
 # Load the shared library
-libmatmul = ctypes.CDLL('./build/libmatmul_benchmark.so')
+libmatmul = ctypes.CDLL('./build/libkernels.so')
 # Define the argument types for the matmul_2d_benchmark function
-libmatmul.matmul_benchmark_wrapper.argtypes = [
+libmatmul.mse.argtypes = [
     np.ctypeslib.ndpointer(dtype=np.float32, flags="C_CONTIGUOUS"),
     np.ctypeslib.ndpointer(dtype=np.float32, flags="C_CONTIGUOUS"),
     np.ctypeslib.ndpointer(dtype=np.float32, flags="C_CONTIGUOUS"),
-    ctypes.c_int,
     ctypes.c_int,
     ctypes.c_int,
 ]
 
 # Define the return type
-libmatmul.matmul_benchmark_wrapper.restype = ctypes.c_float
+libmatmul.mse.restype = ctypes.c_float
 
-def matmul_2d_benchmark(n_rows, n_cols):
+def mse_benchmark(n_rows, n_cols):
     a = np.random.uniform(1, 100, (n_rows, n_cols))
     b = np.random.uniform(1, 100, (n_rows, n_cols))
     a = np.array(a, dtype=np.float32, order='C')
@@ -24,15 +23,19 @@ def matmul_2d_benchmark(n_rows, n_cols):
     M, K = a.shape
     K_, N = b.shape
     assert K == K_
-    c = np.empty((M, N), dtype=np.float32, order='C')
+    c = np.empty((1), dtype=np.float32, order='C')
 
-    flops = libmatmul.matmul_benchmark_wrapper(a, b, c, M, N, K)    
+    flops = libmatmul.mse(a, b, c, M, N)    
+    print(c / (M * N))
+    np_mse = (np.square(a - b)).mean()
+    print(np_mse)
+    
     return flops
 
 
-matmul_2d_benchmark(128, 128) 
-matmul_2d_benchmark(256, 256) 
-matmul_2d_benchmark(512, 512) 
-matmul_2d_benchmark(1024, 1024) 
-matmul_2d_benchmark(2048, 2048) 
-matmul_2d_benchmark(4096, 4096) 
+mse_benchmark(128, 128) 
+mse_benchmark(256, 256) 
+#matmul_2d_benchmark(512, 512) 
+#matmul_2d_benchmark(1024, 1024) 
+#matmul_2d_benchmark(2048, 2048) 
+#matmul_2d_benchmark(4096, 4096) 

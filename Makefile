@@ -9,6 +9,9 @@ libmatmul_benchmark_debug.so:
 libmatmul.so:
 	mkdir -p build && cd cuda && nvcc -shared -o ../build/libmatmul.so ./kernels/matmul_2d.cu kernel.cu -Xcompiler -fPIC -lcublas
 
+libmse.so:
+	mkdir -p build && cd cuda && nvcc -shared -o ../build/libmse.so ./kernels/mse.cu kernel.cu -Xcompiler -fPIC -lcublas
+
 libkernels.so:
 	mkdir -p build && cd cuda && nvcc -shared -o ../build/libkernels.so ./kernels/matmul_2d.cu ./kernels/mse.cu kernel.cu -Xcompiler -fPIC -lcublas
 
@@ -20,6 +23,9 @@ benchmark: libmatmul_benchmark.so
 
 matmul: libmatmul.so
 	python3 benchmark.py
+
+mse: libkernels.so
+	python3 benchmark_mse.py
 
 kernels: libkernels.so
 

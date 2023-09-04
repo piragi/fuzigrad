@@ -1,19 +1,19 @@
 {
-    // Use IntelliSense to learn about possible attributes.
-    // Hover to view descriptions of existing attributes.
-    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "CUDA C++: Launch",
+            "name": "CUDA C++: Debug Python Script",
             "type": "cuda-gdb",
             "request": "launch",
-            "program": "${workspaceFolder}/cuda/runner"
-        },
-        {
-            "name": "CUDA C++: Attach",
-            "type": "cuda-gdb",
-            "request": "attach"
+            "program": "${env:HOME}/projects/env/bin/python3",
+            "args": "${workspaceFolder}/benchmark_mse.py",
+            "preLaunchTask": "build_mse",
+            "environment": [
+                {
+                    "name": "LD_LIBRARY_PATH",
+                    "value": "${workspaceFolder}/build:${env:LD_LIBRARY_PATH}"
+                }
+            ]
         }
     ]
 }

@@ -1,9 +1,10 @@
 {
     "tasks": [
         {
-            "label": "make",
+            "label": "build_mse",
             "type": "shell",
             "command": "make",
+            "args": ["kernels"],
             "group": {
                 "kind": "build",
                 "isDefault": true

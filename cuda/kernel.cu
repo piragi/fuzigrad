@@ -45,3 +45,35 @@ extern "C" void matmul(float* a, float* b, float* c, const int M, const int N, c
     cudaFree(d_b);
     cudaFree(d_c);
 }
+
+// Declaration of the custom CUDA kernel function (adjust as needed)
+extern "C" __global__ void mean_squared_error(float* a, float* b, float* c, const int M, const int N);
+
+// Custom matrix multiplication function
+extern "C" void mse(float* a, float* b, float* c, const int M, const int N) {
+    float* d_a, * d_b, * d_c;
+
+    assert(BM == BN);
+    assert(((BK * BM) / NUMBER_OF_THREADS) % 4 == 0);
+    assert((WM * WN) / (TM * TN * WARPSIZE) >= N_SUBTILES);
+
+    cudaMalloc((void**)&d_a, sizeof(float) * M * N);
+    cudaMalloc((void**)&d_b, sizeof(float) * M * N);
+    cudaMalloc((void**)&d_c, sizeof(float));
+
+    cudaMemcpy(d_a, a, sizeof(float) * M * N, cudaMemcpyHostToDevice);
+    cudaMemcpy(d_b, b, sizeof(float) * M * N, cudaMemcpyHostToDevice);
+
+    dim3 block(NUMBER_OF_THREADS);
+    dim3 grid((M + BM - 1) / BM, (N + BN - 1) / BN);
+    mean_squared_error << <grid, block >> > (d_a, d_b, d_c, M, N);
+    CUDA_CHECK_ERROR(cudaPeekAtLastError());
+    cudaDeviceSynchronize();
+
+    cudaMemcpy(c, d_c, sizeof(float), cudaMemcpyDeviceToHost);
+
+    // Clean up
+    cudaFree(d_a);
+    cudaFree(d_b);
+    cudaFree(d_c);
+}
