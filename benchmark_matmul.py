@@ -2,7 +2,7 @@ import ctypes
 import numpy as np
 
 # Load the shared library
-libmatmul = ctypes.CDLL('./cuda/libmatmul_benchmark.so')
+libmatmul = ctypes.CDLL('./build/libmatmul_benchmark.so')
 # Define the argument types for the matmul_2d_benchmark function
 libmatmul.matmul_benchmark_wrapper.argtypes = [
     np.ctypeslib.ndpointer(dtype=np.float32, flags="C_CONTIGUOUS"),
@@ -30,9 +30,9 @@ def matmul_2d_benchmark(n_rows, n_cols):
     return flops
 
 
-matmul_2d_benchmark(128, 128) 
-matmul_2d_benchmark(256, 256) 
-matmul_2d_benchmark(512, 512) 
-matmul_2d_benchmark(1024, 1024) 
-matmul_2d_benchmark(2048, 2048) 
+#matmul_2d_benchmark(128, 128) 
+#matmul_2d_benchmark(256, 256) 
+#matmul_2d_benchmark(512, 512) 
+#matmul_2d_benchmark(1024, 1024) 
+#matmul_2d_benchmark(2048, 2048) 
 matmul_2d_benchmark(4096, 4096) 
