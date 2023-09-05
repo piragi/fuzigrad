@@ -15,6 +15,9 @@ libmse.so:
 libkernels.so:
 	mkdir -p build && cd cuda && nvcc -shared -o ../build/libkernels.so ./kernels/matmul_2d.cu ./kernels/mse.cu kernel.cu -Xcompiler -fPIC -lcublas
 
+libkernels_debug.so:
+	mkdir -p build && cd cuda && nvcc -g -G -shared -o ../build/libkernels.so ./kernels/matmul_2d.cu ./kernels/mse.cu kernel.cu -Xcompiler -fPIC -lcublas
+
 debug: libmatmul_benchmark_debug.so
 	mkdir -p profile && /opt/nvidia/nsight-compute/2023.2.1/ncu -o ./profile/benchmark_matmul_profile python3 benchmark_matmul.py	
 
@@ -24,10 +27,15 @@ benchmark: libmatmul_benchmark.so
 matmul: libmatmul.so
 	python3 benchmark.py
 
+mse_debug: libkernels_debug.so
+	python3 benchmark_mse.py
+
 mse: libkernels.so
 	python3 benchmark_mse.py
 
 kernels: libkernels.so
+
+kernels_debug: libkernels_debug.so
 
 test: libmatmul.so
 	pytest -s ./test/test.py

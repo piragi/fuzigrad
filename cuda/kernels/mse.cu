@@ -15,8 +15,10 @@ __device__ void load_GMEM(float* a, float* b, const int M, const int N, float* a
 __device__ void load_SMEM(float* a_local, float* b_local, const int M, const int N, float* thread_results) {
     for (int i=0; i < BM; i++) {
         for (int j=0; j < BK; j++) {
-            float difference = a_local[i * BK + j] - b_local[i * BK + j];
-            thread_results[0] += difference * difference;
+            float a_el = a_local[i * BK + j];
+            float b_el = b_local[i * BK + j];
+            float difference =  a_el - b_el;
+            *thread_results += difference * difference;
         }
     }
 }
@@ -34,9 +36,11 @@ extern "C" __global__ void mean_squared_error(float* a, float* b, float* thread_
     const int stride = (number_of_threads * 4) / BK;
 
     // bring a and b into position
-    int position = blockIdx.x * BM + blockIdx.y;
+    int position = blockIdx.x * BM * N + blockIdx.y * BK;
+    int y = blockIdx.y;
     a += position;
     b += position;
+    thread_result += blockIdx.y;
 
     load_GMEM(a, b, M, N, a_local, b_local, inner_row, inner_col, stride);
     __syncthreads();

@@ -53,24 +53,20 @@ extern "C" __global__ void mean_squared_error(float* a, float* b, float* c, cons
 extern "C" void mse(float* a, float* b, float* c, const int M, const int N) {
     float* d_a, * d_b, * d_c;
 
-    assert(BM == BN);
-    assert(((BK * BM) / NUMBER_OF_THREADS) % 4 == 0);
-    assert((WM * WN) / (TM * TN * WARPSIZE) >= N_SUBTILES);
-
     cudaMalloc((void**)&d_a, sizeof(float) * M * N);
     cudaMalloc((void**)&d_b, sizeof(float) * M * N);
-    cudaMalloc((void**)&d_c, sizeof(float));
+    cudaMalloc((void**)&d_c, sizeof(float) * 8);
 
     cudaMemcpy(d_a, a, sizeof(float) * M * N, cudaMemcpyHostToDevice);
     cudaMemcpy(d_b, b, sizeof(float) * M * N, cudaMemcpyHostToDevice);
 
     dim3 block(NUMBER_OF_THREADS);
-    dim3 grid((M + BM - 1) / BM, (N + BN - 1) / BN);
+    dim3 grid((M + BM - 1) / BM, (N + BK - 1) / BK);
     mean_squared_error << <grid, block >> > (d_a, d_b, d_c, M, N);
     CUDA_CHECK_ERROR(cudaPeekAtLastError());
     cudaDeviceSynchronize();
 
-    cudaMemcpy(c, d_c, sizeof(float), cudaMemcpyDeviceToHost);
+    cudaMemcpy(c, d_c, sizeof(float) * 8, cudaMemcpyDeviceToHost);
 
     // Clean up
     cudaFree(d_a);

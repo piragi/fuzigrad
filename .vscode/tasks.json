@@ -1,10 +1,11 @@
 {
+    "version": "2.0.0",
     "tasks": [
         {
             "label": "build_mse",
             "type": "shell",
             "command": "make",
-            "args": ["kernels"],
+            "args": ["kernels_debug"],
             "group": {
                 "kind": "build",
                 "isDefault": true
