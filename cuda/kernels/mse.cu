@@ -37,10 +37,9 @@ extern "C" __global__ void mean_squared_error(float* a, float* b, float* thread_
 
     // bring a and b into position
     int position = blockIdx.x * BM * N + blockIdx.y * BK;
-    int y = blockIdx.y;
     a += position;
     b += position;
-    thread_result += blockIdx.y;
+    thread_result += blockIdx.x * gridDim.y + blockIdx.y;
 
     load_GMEM(a, b, M, N, a_local, b_local, inner_row, inner_col, stride);
     __syncthreads();

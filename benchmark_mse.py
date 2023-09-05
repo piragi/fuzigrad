@@ -24,12 +24,11 @@ def mse_benchmark(n_rows, n_cols):
     M, K = a.shape
     K_, N = b.shape
     assert K == K_
-    print(a[0, 112])
-    print("-----")
-    print(b[0, 112])
-    c = np.zeros((8), dtype=np.float32, order='C')
+
+    c = np.zeros((1000), dtype=np.float32, order='C')
 
     flops = libmatmul.mse(a, b, c, M, N)    
+    # print(c)
     print(c.sum() / (M*N))
     np_mse = (np.square(a - b).mean())
     print(np_mse)
@@ -37,9 +36,9 @@ def mse_benchmark(n_rows, n_cols):
     return flops
 
 
-mse_benchmark(128, 128) 
-#mse_benchmark(256, 256) 
-#matmul_2d_benchmark(512, 512) 
-#matmul_2d_benchmark(1024, 1024) 
-#matmul_2d_benchmark(2048, 2048) 
-#matmul_2d_benchmark(4096, 4096) 
+#mse_benchmark(128, 128) 
+mse_benchmark(256, 256) 
+mse_benchmark(512, 512) 
+#mse_benchmark(1024, 1024) 
+#mse_benchmark(2048, 2048) 
+#mse_benchmark(4096, 4096) 
