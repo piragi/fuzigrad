@@ -7,7 +7,7 @@
             "request": "launch",
             "program": "${env:HOME}/projects/env/bin/python3",
             "args": "${workspaceFolder}/benchmark_mse.py",
-            "preLaunchTask": "build_mse",
+            "preLaunchTask": "build",
             "environment": [
                 {
                     "name": "LD_LIBRARY_PATH",

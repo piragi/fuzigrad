@@ -3,7 +3,7 @@ import numpy as np
 import math
 
 # Load the shared library
-libmatmul = ctypes.CDLL('./build/libmatmul.so')
+libmatmul = ctypes.CDLL('./build/libkernel.so')
 
 # Define the argument types for the matmul_2d_wrapper function
 libmatmul.matmul.argtypes = [

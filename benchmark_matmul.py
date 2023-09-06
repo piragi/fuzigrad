@@ -2,7 +2,7 @@ import ctypes
 import numpy as np
 
 # Load the shared library
-libmatmul = ctypes.CDLL('./build/libmatmul_benchmark.so')
+libmatmul = ctypes.CDLL('./build/libkernel.so')
 # Define the argument types for the matmul_2d_benchmark function
 libmatmul.matmul_benchmark_wrapper.argtypes = [
     np.ctypeslib.ndpointer(dtype=np.float32, flags="C_CONTIGUOUS"),

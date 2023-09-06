@@ -1,44 +1,37 @@
-all: libmatmul_benchmark.so libmatmul.so
+NVCC = nvcc
+NVCC_FLAGS = -Xcompiler -fPIC -lcublas
+DEBUG_FLAGS = -g -G
 
-libmatmul_benchmark.so:
-	mkdir -p build && cd cuda && nvcc -shared -o ../build/libmatmul_benchmark.so ./kernels/matmul_2d.cu matmul_benchmark.cu kernel.cu -Xcompiler -fPIC -lcublas
+SRC_DIR = .
+BUILD_DIR = $(SRC_DIR)/build
+CUDA_DIR = $(SRC_DIR)/cuda
+KERNELS_DIR = $(CUDA_DIR)/kernels
+PROFILE_DIR = $(SRC_DIR)/profile
 
-libmatmul_benchmark_debug.so:
-	mkdir -p build && cd cuda && nvcc -shared -o ../build/libmatmul_benchmark.so ./kernels/matmul_2d.cu matmul_benchmark.cu kernel.cu -Xcompiler -fPIC -lcublas
+# List of all the .cu files
+CUDA_FILES = $(wildcard $(CUDA_DIR)/*.cu $(KERNELS_DIR)/*.cu)
 
-libmatmul.so:
-	mkdir -p build && cd cuda && nvcc -shared -o ../build/libmatmul.so ./kernels/matmul_2d.cu kernel.cu -Xcompiler -fPIC -lcublas
+# Name of the output file
+OUT_FILE = $(BUILD_DIR)/libkernel.so
+DEBUG_OUT_FILE = $(BUILD_DIR)/libkernel_debug.so
 
-libmse.so:
-	mkdir -p build && cd cuda && nvcc -shared -o ../build/libmse.so ./kernels/mse.cu kernel.cu -Xcompiler -fPIC -lcublas
+all: $(OUT_FILE)
 
-libkernels.so:
-	mkdir -p build && cd cuda && nvcc -shared -o ../build/libkernels.so ./kernels/matmul_2d.cu ./kernels/mse.cu kernel.cu -Xcompiler -fPIC -lcublas
+debug: $(DEBUG_OUT_FILE)
 
-libkernels_debug.so:
-	mkdir -p build && cd cuda && nvcc -g -G -shared -o ../build/libkernels.so ./kernels/matmul_2d.cu ./kernels/mse.cu kernel.cu -Xcompiler -fPIC -lcublas
+profile: $(OUT_FILE)
+	mkdir -p $(PROFILE_DIR)
+	/opt/nvidia/nsight-compute/2023.2.1/ncu -o $(PROFILE_DIR)/benchmark_matmul_profile python3 benchmark_matmul.py
 
-debug: libmatmul_benchmark_debug.so
-	mkdir -p profile && /opt/nvidia/nsight-compute/2023.2.1/ncu -o ./profile/benchmark_matmul_profile python3 benchmark_matmul.py	
+$(OUT_FILE): $(CUDA_FILES)
+	mkdir -p $(BUILD_DIR)
+	$(NVCC) -shared -o $@ $(NVCC_FLAGS) $^
 
-benchmark: libmatmul_benchmark.so
-	python3 benchmark_matmul.py
-
-matmul: libmatmul.so
-	python3 benchmark.py
-
-mse_debug: libkernels_debug.so
-	python3 benchmark_mse.py
-
-mse: libkernels.so
-	python3 benchmark_mse.py
-
-kernels: libkernels.so
-
-kernels_debug: libkernels_debug.so
-
-test: libmatmul.so
-	pytest -s ./test/test.py
+$(DEBUG_OUT_FILE): $(CUDA_FILES)
+	mkdir -p $(BUILD_DIR)
+	$(NVCC) -shared -o $@ $(NVCC_FLAGS) $(DEBUG_FLAGS) $^
 
 clean:
-	rm -rf build/ profile/
+	rm -rf $(BUILD_DIR)/ $(PROFILE_DIR)/
+
+.PHONY: all debug profile clean
