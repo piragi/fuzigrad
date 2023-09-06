@@ -1,5 +1,6 @@
 import ctypes
 import numpy as np
+import math
 
 # Load the shared library
 libmatmul = ctypes.CDLL('./build/libkernels.so')
@@ -25,20 +26,26 @@ def mse_benchmark(n_rows, n_cols):
     K_, N = b.shape
     assert K == K_
 
-    c = np.zeros((1000), dtype=np.float32, order='C')
+    block_dims = (math.ceil(M/128) * math.ceil(N/16))
 
-    flops = libmatmul.mse(a, b, c, M, N)    
-    # print(c)
-    print(c.sum() / (M*N))
-    np_mse = (np.square(a - b).mean())
-    print(np_mse)
-    
-    return flops
+    mse_gpu = np.zeros((block_dims), dtype=np.float32, order='C')
+
+    _ = libmatmul.mse(a, b, mse_gpu, M, N)    
+    mse_cpu = (np.square(a - b).mean())
+    mse_gpu = (mse_gpu.sum() / (M*N))
+
+    tolerance = 1e-5
+    abs_error = np.abs(mse_cpu - mse_gpu)
+    rel_error = abs_error / np.abs(mse_cpu)
+    assert abs_error <= tolerance or rel_error <= tolerance
 
 
-#mse_benchmark(128, 128) 
+    return _
+
+
+mse_benchmark(128, 128) 
 mse_benchmark(256, 256) 
 mse_benchmark(512, 512) 
-#mse_benchmark(1024, 1024) 
-#mse_benchmark(2048, 2048) 
-#mse_benchmark(4096, 4096) 
+mse_benchmark(1024, 1024) 
+mse_benchmark(2048, 2048) 
+mse_benchmark(4096, 4096) 

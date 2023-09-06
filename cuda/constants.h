@@ -17,3 +17,8 @@
 // WARPSIZE threads per warp and warptile
 // therefore:
 #define NUMBER_OF_THREADS ((BM * BN) / (WN * WM)) * WARPSIZE
+
+
+// ----- MSE -----
+#define MSE_TM 4
+#define MSE_TN 4

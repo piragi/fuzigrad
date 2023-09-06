@@ -55,7 +55,6 @@ extern "C" void mse(float* a, float* b, float* c, const int M, const int N) {
 
     dim3 block(128);
     dim3 grid((M + BM - 1) / BM, (N + BK - 1) / BK);
-    printf("grid.x: %d, grid.y: %d", grid.x, grid.y);
 
     cudaMalloc((void**)&d_a, sizeof(float) * M * N);
     cudaMalloc((void**)&d_b, sizeof(float) * M * N);
