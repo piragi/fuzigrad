@@ -53,8 +53,8 @@ extern "C" __global__ void mean_squared_error(float* a, float* b, float* c, cons
 extern "C" void mse(float* a, float* b, float* c, const int M, const int N) {
     float* d_a, * d_b, * d_c;
 
-    dim3 block(128);
-    dim3 grid((M + BM - 1) / BM, (N + BK - 1) / BK);
+    dim3 block(MSE_NUMBER_OF_THREADS);
+    dim3 grid((M + MSE_BM - 1) / MSE_BM, (N + MSE_BN - 1) / MSE_BN);
 
     cudaMalloc((void**)&d_a, sizeof(float) * M * N);
     cudaMalloc((void**)&d_b, sizeof(float) * M * N);

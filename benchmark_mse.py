@@ -3,7 +3,7 @@ import numpy as np
 import math
 
 # Load the shared library
-libmatmul = ctypes.CDLL('./build/libkernel.so')
+libmatmul = ctypes.CDLL('./build/libkernel_debug.so')
 # Define the argument types for the matmul_2d_benchmark function
 libmatmul.mse.argtypes = [
     np.ctypeslib.ndpointer(dtype=np.float32, flags="C_CONTIGUOUS"),
@@ -16,9 +16,12 @@ libmatmul.mse.argtypes = [
 # Define the return type
 libmatmul.mse.restype = ctypes.c_float
 
+MSE_BM = 128
+MSE_BN = 16
+
 def mse_benchmark(n_rows, n_cols):
     np.random.seed(0)
-    a = np.random.uniform(1, 100, (n_rows, n_cols))
+    a = np.random.normal(1, 100, (n_rows, n_cols))
     b = np.random.uniform(1, 100, (n_rows, n_cols))
     a = np.array(a, dtype=np.float32, order='C')
     b = np.array(b, dtype=np.float32, order='C')
@@ -26,18 +29,21 @@ def mse_benchmark(n_rows, n_cols):
     K_, N = b.shape
     assert K == K_
 
-    block_dims = (math.ceil(M/128) * math.ceil(N/16))
+    # TODO: synchronize constants across cuda and python
+    block_dims = (math.ceil(M/MSE_BM) * math.ceil(N/MSE_BN))
 
     mse_gpu = np.zeros((block_dims), dtype=np.float32, order='C')
+
 
     _ = libmatmul.mse(a, b, mse_gpu, M, N)    
     mse_cpu = (np.square(a - b).mean())
     mse_gpu = (mse_gpu.sum() / (M*N))
+    
 
-    tolerance = 1e-5
+    tolerance = 1e-5    
     abs_error = np.abs(mse_cpu - mse_gpu)
     rel_error = abs_error / np.abs(mse_cpu)
-    assert abs_error <= tolerance or rel_error <= tolerance
+    assert abs_error <= tolerance or rel_error <= tolerance, f'Matrix of {M}x{N} absolute error: {abs_error}, relative error: {rel_error}'
 
 
     return _
