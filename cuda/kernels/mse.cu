@@ -16,7 +16,7 @@ __device__ void load_SMEM(float *a_local, float *b_local, const int M, const int
         for (int wsn_idx = 0; wsn_idx < MSE_N_SUBTILES; wsn_idx++) {
             // every thread inside the warp makes its TM*TN thing
             int pos_warp = warp_row * MSE_WM * MSE_BN + warp_col * MSE_WN;
-            int pos_subwarp = (wsm_idx * warp_subtile_m + warp_subtile_row * MSE_WN) + (wsn_idx * warp_subtile_n + warp_subtile_col * MSE_TN);
+            int pos_subwarp = (wsm_idx * warp_subtile_m + warp_subtile_row * MSE_TN * warp_subtile_n) + (wsn_idx * warp_subtile_n + warp_subtile_col * MSE_TN);
             int pos_new = pos_warp + pos_subwarp;
             for (int tm_idx = 0; tm_idx < MSE_TM; tm_idx++) {
                 for (int tn_idx = 0; tn_idx < MSE_TN; tn_idx++) {
@@ -52,7 +52,8 @@ extern "C" __global__ void mean_squared_error(float *a, float *b, float *block_r
 
     // thread inside warp subtile
     const int warp_subtile_idx = idx % WARPSIZE;
-    const int warp_subtile_m = MSE_WM / MSE_M_SUBTILES;
+    // this evaluates to 0 but should be one?!
+    const int warp_subtile_m = 32;  // MSE_WM / MSE_M_SUBTILES;
     const int warp_subtile_n = MSE_WN / MSE_N_SUBTILES;
     const int warp_subtile_row = warp_subtile_idx / (warp_subtile_n / TN);
     const int warp_subtile_col = warp_subtile_idx % (warp_subtile_n / TN);
@@ -71,5 +72,8 @@ extern "C" __global__ void mean_squared_error(float *a, float *b, float *block_r
     __syncthreads();
     load_SMEM(a_local, b_local, M, N, &reg_tile, warp_row, warp_col, warp_subtile_m, warp_subtile_n, warp_subtile_row, warp_subtile_col, tile_row, tile_col);
     __syncthreads();
+    if (blockIdx.x == 0 && blockIdx.y == 0) {
+        printf("thread_id: %d, result: %f\n", idx, reg_tile);
+    }
     atomicAdd(block_result, reg_tile);
 }

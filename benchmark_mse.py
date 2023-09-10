@@ -18,11 +18,11 @@ libmatmul.mse.argtypes = [
 libmatmul.mse.restype = ctypes.c_float
 
 MSE_BM = 128
-MSE_BN = 16
+MSE_BN = 32
 
 def mse_benchmark(n_rows, n_cols):
     np.random.seed(0)
-    a = np.random.normal(1, 100, (n_rows, n_cols))
+    a = np.random.uniform(1, 100, (n_rows, n_cols))
     b = np.random.uniform(1, 100, (n_rows, n_cols))
     a = np.array(a, dtype=np.float32, order='C')
     b = np.array(b, dtype=np.float32, order='C')
@@ -30,21 +30,43 @@ def mse_benchmark(n_rows, n_cols):
     K_, N = b.shape
     assert K == K_
 
-    print(a[4:8, :4])
-    print()
-    print(a[4:8, 5:8])
+    result = 0
+    for i in range(32):
+        for j in range(4):
+            #if (i*4+j) % 32 == 0:
+                #print("new warp")
+            result = np.square(a[4*i:4*i+4, j*4:j*4+4] - b[4*i:4*i+4, j*4:j*4+4]).sum()
+            print(f'row: {4*i}-{4*i+4}, column: {j*4}-{j*4+4}')
+            print(a[4*i:4*i+4, j*4:j*4+4])
+            result += np.square(a[4*i:4*i+4, j*4+16:j*4+20] - b[4*i:4*i+4, j*4+16:j*4+20]).sum()
+            print(f'thread_id: {i*4 +j}, result: {result}')
+    print('--------------')
+    #print(f'block_result {result}')
+    
+    #result = 0
+    #i = 16
+    #j = 1
+    #result += np.square(a[4*i:4*i+4, j*4:j*4+4] - b[4*i:4*i+4, j*4:j*4+4]).sum()
+    #result += np.square(a[4*i:4*i+4, j*4+16:j*4+20] - b[4*i:4*i+4, j*4+16:j*4+20]).sum()
+    #print(f'pos \n{a[4*i:4*i+4, j*4:j*4+4]}')
+    
+    #print(f'warp2 thread0 {result}')
+
+
+    print(f'result: {result.sum()}')
     # TODO: synchronize constants across cuda and python
     block_dims = (math.ceil(M/MSE_BM) * math.ceil(N/MSE_BN))
 
 
     times = []
-    for _ in range(100): 
+    for _ in range(1): 
         mse_gpu = np.zeros((block_dims), dtype=np.float32, order='C')
         start = time.time()
         _ = libmatmul.mse(a, b, mse_gpu, M, N)
         times.append(time.time()-start)
     print(f'time[ms] for 100 iterations: {np.average(times) * 1e3}')
     mse_cpu = (np.square(a - b).mean())
+    print(mse_gpu)
     mse_gpu = (mse_gpu.sum() / (M*N))
     
 
