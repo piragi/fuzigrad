@@ -69,7 +69,7 @@ extern "C" __global__ void mean_squared_error(float *a, float *b, float *block_r
 
     load_GMEM(a, b, M, N, a_local, b_local, inner_row, inner_col, stride);
     __syncthreads();
-    load_SMEM(a_local, b_local, M, N, &reg_tile, warp_row, warp_col, warp_subtile_m, warp_subtile_n warp_subtile_row, warp_subtile_col, tile_row, tile_col);
+    load_SMEM(a_local, b_local, M, N, &reg_tile, warp_row, warp_col, warp_subtile_m, warp_subtile_n, warp_subtile_row, warp_subtile_col, tile_row, tile_col);
     __syncthreads();
     atomicAdd(block_result, reg_tile);
 }
