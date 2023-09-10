@@ -22,11 +22,11 @@
 
 // ---- MSE ----
 #define MSE_BM 128
-#define MSE_BN 16
-#define MSE_TM 8
-#define MSE_TN 8
-#define MSE_WM 64
-#define MSE_WN 64
+#define MSE_BN 32
+#define MSE_TM 4
+#define MSE_TN 4
+#define MSE_WM 32
+#define MSE_WN 32
 #define MSE_N_SUBTILES 2
 #define MSE_M_SUBTILES (MSE_WM * MSE_WN) / (WARPSIZE * MSE_TM * MSE_TN * MSE_N_SUBTILES)
 

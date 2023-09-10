@@ -1,6 +1,7 @@
 import ctypes
 import numpy as np
 import math
+import time
 
 # Load the shared library
 libmatmul = ctypes.CDLL('./build/libkernel_debug.so')
@@ -32,10 +33,14 @@ def mse_benchmark(n_rows, n_cols):
     # TODO: synchronize constants across cuda and python
     block_dims = (math.ceil(M/MSE_BM) * math.ceil(N/MSE_BN))
 
-    mse_gpu = np.zeros((block_dims), dtype=np.float32, order='C')
 
-
-    _ = libmatmul.mse(a, b, mse_gpu, M, N)    
+    times = []
+    for _ in range(100): 
+        mse_gpu = np.zeros((block_dims), dtype=np.float32, order='C')
+        start = time.time()
+        _ = libmatmul.mse(a, b, mse_gpu, M, N)
+        times.append(time.time()-start)
+    print(f'time[ms] for 100 iterations: {np.average(times) * 1e3}')
     mse_cpu = (np.square(a - b).mean())
     mse_gpu = (mse_gpu.sum() / (M*N))
     
