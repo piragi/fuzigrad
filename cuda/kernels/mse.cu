@@ -16,13 +16,13 @@ __device__ void load_SMEM(float *a_local, float *b_local, const int M, const int
         for (int wsn_idx = 0; wsn_idx < MSE_N_SUBTILES; wsn_idx++) {
             // every thread inside the warp makes its TM*TN thing
             int pos_warp = warp_row * MSE_WM * MSE_BN + warp_col * MSE_WN;
-            int pos_subwarp = (wsm_idx * warp_subtile_m + warp_subtile_row * MSE_WN) + (wsn_idx * warp_subtile_n + warp_subtile_col);
+            int pos_subwarp = (wsm_idx * warp_subtile_m + warp_subtile_row * MSE_WN) + (wsn_idx * warp_subtile_n + warp_subtile_col * MSE_TN);
             int pos_new = pos_warp + pos_subwarp;
             for (int tm_idx = 0; tm_idx < MSE_TM; tm_idx++) {
                 for (int tn_idx = 0; tn_idx < MSE_TN; tn_idx++) {
                     // int pos = (inner_row * MSE_TM + tm_idx) * MSE_BN + inner_col * MSE_TN + tn_idx;
-                    int pos = pos_new + (inner_row * MSE_TM + tm_idx) + inner_col * MSE_TN + tn_idx;
-
+                    int pos = pos_new + (tm_idx * MSE_BN) + tn_idx;
+                    float a_new = a_local[pos];
                     float difference = a_local[pos] - b_local[pos];
                     *reg_tile += difference * difference;
                 }

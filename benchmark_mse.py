@@ -30,6 +30,9 @@ def mse_benchmark(n_rows, n_cols):
     K_, N = b.shape
     assert K == K_
 
+    print(a[4:8, :4])
+    print()
+    print(a[4:8, 5:8])
     # TODO: synchronize constants across cuda and python
     block_dims = (math.ceil(M/MSE_BM) * math.ceil(N/MSE_BN))
 
@@ -55,8 +58,8 @@ def mse_benchmark(n_rows, n_cols):
 
 
 mse_benchmark(128, 128) 
-mse_benchmark(256, 256) 
-mse_benchmark(512, 512) 
-mse_benchmark(1024, 1024) 
-mse_benchmark(2048, 2048) 
-mse_benchmark(4096, 4096) 
+# mse_benchmark(256, 256) 
+# mse_benchmark(512, 512) 
+# mse_benchmark(1024, 1024) 
+# mse_benchmark(2048, 2048) 
+# mse_benchmark(4096, 4096) 
