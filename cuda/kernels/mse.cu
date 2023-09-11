@@ -32,6 +32,13 @@ __device__ void load_SMEM(float *a_local, float *b_local, const int M, const int
     }
 }
 
+__device__ void shuffle_down_warps(float *reg_tile) {
+    unsigned mask = __ballot_sync(0xffffffff, 1);
+    for (int offset = WARPSIZE / 2; offset > 0; offset /= 2) {
+        *reg_tile += __shfl_down_sync(mask, *reg_tile, offset);
+    }
+}
+
 extern "C" __global__ void mean_squared_error(float *a, float *b, float *block_result, const int M, const int N) {
     const int number_of_threads = blockDim.x * blockDim.y;
     const int idx = threadIdx.x;
@@ -72,8 +79,11 @@ extern "C" __global__ void mean_squared_error(float *a, float *b, float *block_r
     __syncthreads();
     load_SMEM(a_local, b_local, M, N, &reg_tile, warp_row, warp_col, warp_subtile_m, warp_subtile_n, warp_subtile_row, warp_subtile_col, tile_row, tile_col);
     __syncthreads();
+    shuffle_down_warps(&reg_tile);
     // if (blockIdx.x == 0 && blockIdx.y == 0) {
     // printf("thread_id: %d, result: %f\n", threadIdx.x, reg_tile);
     //}
-    atomicAdd(block_result, reg_tile);
+    if ((idx % 32) == 0) {
+        atomicAdd(block_result, reg_tile);
+    }
 }
