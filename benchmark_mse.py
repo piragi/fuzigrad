@@ -17,8 +17,8 @@ libmatmul.mse.argtypes = [
 # Define the return type
 libmatmul.mse.restype = ctypes.c_float
 
-MSE_BM = 128
-MSE_BN = 32
+MSE_BM = 64
+MSE_BN = 64
 
 def mse_benchmark(n_rows, n_cols):
     np.random.seed(0)
@@ -30,27 +30,35 @@ def mse_benchmark(n_rows, n_cols):
     K_, N = b.shape
     assert K == K_
 
-    #result = 0
-    #for i in range(32):
-        #for j in range(4):
-            ##if (i*4+j) % 32 == 0:
-                ##print("new warp")
-            #result = np.square(a[4*i:4*i+4, j*4:j*4+4] - b[4*i:4*i+4, j*4:j*4+4]).sum()
-            #print(f'row: {4*i}-{4*i+4}, column: {j*4}-{j*4+4}')
-            #print(a[4*i:4*i+4, j*4:j*4+4])
-            #result += np.square(a[4*i:4*i+4, j*4+16:j*4+20] - b[4*i:4*i+4, j*4+16:j*4+20]).sum()
-            #print(f'thread_id: {i*4 +j}, result: {result}')
-    #print('--------------')
-    #print(f'block_result {result}')
-    
-    #result = 0
-    #i = 16
-    #j = 1
-    #result += np.square(a[4*i:4*i+4, j*4:j*4+4] - b[4*i:4*i+4, j*4:j*4+4]).sum()
-    #result += np.square(a[4*i:4*i+4, j*4+16:j*4+20] - b[4*i:4*i+4, j*4+16:j*4+20]).sum()
-    #print(f'pos \n{a[4*i:4*i+4, j*4:j*4+4]}')
-    
-    #print(f'warp2 thread0 {result}')
+    results_row_offset_corrected_v2 = []
+
+    debug = False
+    iterations = 100
+    if debug:
+        iterations = 1
+        for i in range(2):
+            for j in range(2):
+                warp_pos_x = i * 32
+                warp_pos_y = j * 32
+                for k in range(32):
+                    thread_id = k + j*32 + i*64
+                    thread_pos_y = k * 4
+                    pos_x = warp_pos_x
+                    pos_y = warp_pos_y + thread_pos_y
+                    result1 = np.square(a[pos_x:pos_x+4, pos_y:pos_y+4] - b[pos_x:pos_x+4, pos_y:pos_y+4]).sum()
+                    result2 = np.square(a[pos_x+16:pos_x+20, pos_y:pos_y+4] - b[pos_x+16:pos_x+20, pos_y:pos_y+4]).sum()
+                    results_row_offset_corrected_v2.append({
+                        'thread_id': thread_id,
+                        'result': result1 + result2
+                    })
+
+        for element in results_row_offset_corrected_v2:
+            print(f'thread_id: {element["thread_id"]}, result: {element["result"]}')
+
+        print('-------')
+        print(a[:4, 16:20])
+        print(a[16:20, 16:20])
+
 
 
     #print(f'result: {result.sum()}')
@@ -59,7 +67,7 @@ def mse_benchmark(n_rows, n_cols):
 
 
     times = []
-    for _ in range(100): 
+    for _ in range(iterations): 
         mse_gpu = np.zeros((block_dims), dtype=np.float32, order='C')
         start = time.time()
         _ = libmatmul.mse(a, b, mse_gpu, M, N)

@@ -11,7 +11,7 @@
 #define WN 64
 #define WM 64
 #define N_SUBTILES 2
-#define M_SUBTILES (WM * WN) / (WARPSIZE * TM * TN * N_SUBTILES)
+#define M_SUBTILES ((WM * WN) / (WARPSIZE * TM * TN * N_SUBTILES))
 
 // one grid per block
 // one grid calculates BM * BN results
@@ -21,13 +21,13 @@
 #define NUMBER_OF_THREADS ((BM * BN) / (WN * WM)) * WARPSIZE
 
 // ---- MSE ----
-#define MSE_BM 128
-#define MSE_BN 32
+#define MSE_BM 64
+#define MSE_BN 64
 #define MSE_TM 4
 #define MSE_TN 4
 #define MSE_WM 32
 #define MSE_WN 32
 #define MSE_N_SUBTILES 2
-#define MSE_M_SUBTILES (MSE_WM * MSE_WN) / (WARPSIZE * MSE_TM * MSE_TN * MSE_N_SUBTILES)
+#define MSE_M_SUBTILES ((MSE_WM * MSE_WN) / (WARPSIZE * MSE_TM * MSE_TN * MSE_N_SUBTILES))
 
 #define MSE_NUMBER_OF_THREADS ((MSE_BM * MSE_BN) / (MSE_WM * MSE_WN)) * WARPSIZE

@@ -16,8 +16,8 @@ __device__ void load_SMEM(float *a_local, float *b_local, const int M, const int
         for (int wsn_idx = 0; wsn_idx < MSE_N_SUBTILES; wsn_idx++) {
             // TODO: cleanup
             int pos_warp = warp_row * MSE_WM * MSE_BN + warp_col * MSE_WN;
-            pos_warp += (warp_subtile_row * MSE_WN * MSE_TM) + (warp_subtile_col * MSE_TN);
-            int pos_subwarp = (wsm_idx * warp_subtile_m) + (wsn_idx * warp_subtile_n);
+            pos_warp += (warp_subtile_row * MSE_BN * MSE_TM) + (warp_subtile_col * MSE_TN);
+            int pos_subwarp = (wsm_idx * warp_subtile_m * MSE_BN) + (wsn_idx * warp_subtile_n);
             int pos_new = pos_warp + pos_subwarp;
             for (int tm_idx = 0; tm_idx < MSE_TM; tm_idx++) {
                 for (int tn_idx = 0; tn_idx < MSE_TN; tn_idx++) {
@@ -46,15 +46,14 @@ extern "C" __global__ void mean_squared_error(float *a, float *b, float *block_r
     const int stride = (number_of_threads * 4) / MSE_BN;
 
     // thread inside warptile
-    const int number_of_warps = MSE_NUMBER_OF_THREADS / 32;
+    const int number_of_warps = MSE_NUMBER_OF_THREADS / WARPSIZE;
     const int warp_idx = idx / WARPSIZE;
     const int warp_row = warp_idx / (MSE_BN / MSE_WN);
     const int warp_col = warp_idx % (MSE_BN / MSE_WN);
 
     // thread inside warp subtile
     const int warp_subtile_idx = idx % WARPSIZE;
-    // TODO: this evaluates to 0 but should be one?!
-    const int warp_subtile_m = 32;  // MSE_WM / MSE_M_SUBTILES;
+    const int warp_subtile_m = MSE_WM / MSE_M_SUBTILES;
     const int warp_subtile_n = MSE_WN / MSE_N_SUBTILES;
     const int warp_subtile_row = warp_subtile_idx / (warp_subtile_n / MSE_TN);
     const int warp_subtile_col = warp_subtile_idx % (warp_subtile_n / MSE_TN);
@@ -74,7 +73,7 @@ extern "C" __global__ void mean_squared_error(float *a, float *b, float *block_r
     load_SMEM(a_local, b_local, M, N, &reg_tile, warp_row, warp_col, warp_subtile_m, warp_subtile_n, warp_subtile_row, warp_subtile_col, tile_row, tile_col);
     __syncthreads();
     // if (blockIdx.x == 0 && blockIdx.y == 0) {
-    // printf("thread_id: %d, result: %f\n", idx, reg_tile);
-    // }
+    // printf("thread_id: %d, result: %f\n", threadIdx.x, reg_tile);
+    //}
     atomicAdd(block_result, reg_tile);
 }
