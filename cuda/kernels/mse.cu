@@ -20,11 +20,22 @@ __device__ void load_SMEM(float *a_local, float *b_local, const int M, const int
             int pos_subwarp = (wsm_idx * warp_subtile_m * MSE_BN) + (wsn_idx * warp_subtile_n);
             int pos_new = pos_warp + pos_subwarp;
             for (int tm_idx = 0; tm_idx < MSE_TM; tm_idx++) {
-                for (int tn_idx = 0; tn_idx < MSE_TN; tn_idx++) {
+                for (int tn_idx = 0; tn_idx < MSE_TN; tn_idx += 4) {
                     // int pos = (inner_row * MSE_TM + tm_idx) * MSE_BN + inner_col * MSE_TN + tn_idx;
                     int pos = pos_new + (tm_idx * MSE_BN) + tn_idx;
-                    float a_new = a_local[pos];
-                    float difference = a_local[pos] - b_local[pos];
+                    // float a_new = a_local[pos];
+                    float4 a_new = reinterpret_cast<float4 *>(&a_local[pos])[0];
+                    float4 b_new = reinterpret_cast<float4 *>(&b_local[pos])[0];
+                    float difference = a_new.x - b_new.x;
+                    *reg_tile += difference * difference;
+
+                    difference = a_new.y - b_new.y;
+                    *reg_tile += difference * difference;
+
+                    difference = a_new.z - b_new.z;
+                    *reg_tile += difference * difference;
+
+                    difference = a_new.w - b_new.w;
                     *reg_tile += difference * difference;
                 }
             }

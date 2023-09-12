@@ -72,7 +72,7 @@ def mse_benchmark(n_rows, n_cols):
         start = time.time()
         _ = libmatmul.mse(a, b, mse_gpu, M, N)
         times.append(time.time()-start)
-    print(f'time[ms] for 100 iterations: {np.average(times) * 1e3}')
+    print(f'time[ms] average of 1 in 100 iterations: {np.average(times) * 1e3}')
     mse_cpu = (np.square(a - b).mean())
     #print(mse_gpu)
     mse_gpu = (mse_gpu.sum() / (M*N))
