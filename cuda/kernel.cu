@@ -1,25 +1,25 @@
-#include <cstdio>
-#include <cuda_runtime.h>
 #include <assert.h>
+#include <cuda_runtime.h>
+
+#include <cstdio>
+
 #include "constants.h"
 
-
-#define CUDA_CHECK_ERROR(call) \
-    do { \
-        cudaError_t err = call; \
-        if (err != cudaSuccess) { \
+#define CUDA_CHECK_ERROR(call)                                                                         \
+    do {                                                                                               \
+        cudaError_t err = call;                                                                        \
+        if (err != cudaSuccess) {                                                                      \
             fprintf(stderr, "CUDA error in %s:%d: %s\n", __FILE__, __LINE__, cudaGetErrorString(err)); \
-            exit(EXIT_FAILURE); \
-        } \
-    } while(0)
-
+            exit(EXIT_FAILURE);                                                                        \
+        }                                                                                              \
+    } while (0)
 
 // Declaration of the custom CUDA kernel function (adjust as needed)
 extern "C" __global__ void matmul_2d_tiling(float* a, float* b, float* c, const int M, const int N, const int K);
 
 // Custom matrix multiplication function
 extern "C" void matmul(float* a, float* b, float* c, const int M, const int N, const int K) {
-    float* d_a, * d_b, * d_c;
+    float *d_a, *d_b, *d_c;
 
     assert(BM == BN);
     assert(((BK * BM) / NUMBER_OF_THREADS) % 4 == 0);
@@ -34,7 +34,7 @@ extern "C" void matmul(float* a, float* b, float* c, const int M, const int N, c
 
     dim3 block(NUMBER_OF_THREADS);
     dim3 grid((M + BM - 1) / BM, (N + BN - 1) / BN);
-    matmul_2d_tiling << <grid, block >> > (d_a, d_b, d_c, M, N, K);
+    matmul_2d_tiling<<<grid, block>>>(d_a, d_b, d_c, M, N, K);
     CUDA_CHECK_ERROR(cudaPeekAtLastError());
     cudaDeviceSynchronize();
 
@@ -51,10 +51,11 @@ extern "C" __global__ void mean_squared_error(float* a, float* b, float* c, cons
 
 // Custom matrix multiplication function
 extern "C" void mse(float* a, float* b, float* c, const int M, const int N) {
-    float* d_a, * d_b, * d_c;
+    float *d_a, *d_b, *d_c;
 
     dim3 block(MSE_NUMBER_OF_THREADS);
     dim3 grid((M + MSE_BM - 1) / MSE_BM, (N + MSE_BN - 1) / MSE_BN);
+    printf("M: %d, N: %d -- %d blocks and %d threads per block\n", M, N, grid.x * grid.y, block.x);
 
     cudaMalloc((void**)&d_a, sizeof(float) * M * N);
     cudaMalloc((void**)&d_b, sizeof(float) * M * N);
@@ -63,7 +64,7 @@ extern "C" void mse(float* a, float* b, float* c, const int M, const int N) {
     cudaMemcpy(d_a, a, sizeof(float) * M * N, cudaMemcpyHostToDevice);
     cudaMemcpy(d_b, b, sizeof(float) * M * N, cudaMemcpyHostToDevice);
 
-    mean_squared_error << <grid, block >> > (d_a, d_b, d_c, M, N);
+    mean_squared_error<<<grid, block>>>(d_a, d_b, d_c, M, N);
     CUDA_CHECK_ERROR(cudaPeekAtLastError());
     cudaDeviceSynchronize();
 
@@ -73,4 +74,27 @@ extern "C" void mse(float* a, float* b, float* c, const int M, const int N) {
     cudaFree(d_a);
     cudaFree(d_b);
     cudaFree(d_c);
+}
+
+// Declaration of the custom CUDA kernel function (adjust as needed)
+extern "C" __global__ void reduce(float* a);
+
+// Custom matrix multiplication function
+extern "C" void reduce_kernel(float* a, const int M) {
+    float* d_a;
+
+    dim3 block(REDUCE_NUMBER_OF_THREADS);
+    dim3 grid((M + REDUCE_BM - 1) / REDUCE_BM);
+    printf("M: %d -- %d blocks and %d threads per block\n", M, grid.x * grid.y, block.x);
+
+    cudaMalloc((void**)&d_a, sizeof(float) * M);
+
+    cudaMemcpy(d_a, a, sizeof(float) * M, cudaMemcpyHostToDevice);
+
+    reduce<<<grid, block>>>(d_a);
+    CUDA_CHECK_ERROR(cudaPeekAtLastError());
+    cudaDeviceSynchronize();
+
+    // Clean up
+    cudaFree(d_a);
 }

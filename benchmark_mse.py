@@ -67,7 +67,7 @@ def mse_benchmark(n_rows, n_cols):
 
 
     times = []
-    for _ in range(iterations): 
+    for _ in range(1): 
         mse_gpu = np.zeros((block_dims), dtype=np.float32, order='C')
         start = time.time()
         _ = libmatmul.mse(a, b, mse_gpu, M, N)

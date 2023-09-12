@@ -6,7 +6,7 @@
             "type": "cuda-gdb",
             "request": "launch",
             "program": "${env:HOME}/projects/env/bin/python3",
-            "args": "${workspaceFolder}/benchmark_mse.py",
+            "args": "${workspaceFolder}/benchmark_reduce.py",
             "preLaunchTask": "build",
             "environment": [
                 {
