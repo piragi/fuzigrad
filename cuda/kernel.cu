@@ -77,7 +77,7 @@ extern "C" void mse(float* a, float* b, float* c, const int M, const int N) {
 }
 
 // Declaration of the custom CUDA kernel function (adjust as needed)
-extern "C" __global__ void reduce(float* a);
+extern "C" __global__ void reduce(float* a, const int M);
 
 // Custom matrix multiplication function
 extern "C" void reduce_kernel(float* a, const int M) {
@@ -85,15 +85,17 @@ extern "C" void reduce_kernel(float* a, const int M) {
 
     dim3 block(REDUCE_NUMBER_OF_THREADS);
     dim3 grid((M + REDUCE_BM - 1) / REDUCE_BM);
-    printf("M: %d -- %d blocks and %d threads per block\n", M, grid.x * grid.y, block.x);
+    printf("M: %d -- %d block(s) and %d threads per block\n", M, grid.x * grid.y, block.x);
 
     cudaMalloc((void**)&d_a, sizeof(float) * M);
 
     cudaMemcpy(d_a, a, sizeof(float) * M, cudaMemcpyHostToDevice);
 
-    reduce<<<grid, block>>>(d_a);
+    reduce<<<grid, block>>>(d_a, M);
     CUDA_CHECK_ERROR(cudaPeekAtLastError());
     cudaDeviceSynchronize();
+
+    cudaMemcpy(a, d_a, sizeof(float) * M, cudaMemcpyDeviceToHost);
 
     // Clean up
     cudaFree(d_a);
