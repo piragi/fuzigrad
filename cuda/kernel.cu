@@ -77,26 +77,30 @@ extern "C" void mse(float* a, float* b, float* c, const int M, const int N) {
 }
 
 // Declaration of the custom CUDA kernel function (adjust as needed)
-extern "C" __global__ void reduce(float* a, const int M);
+extern "C" __global__ void reduce_warps(float* a, const int M, float* result);
 
 // Custom matrix multiplication function
-extern "C" void reduce_kernel(float* a, const int M) {
+extern "C" void reduce_kernel(float* a, const int M, float* result) {
     float* d_a;
+    float* d_result;
 
     dim3 block(REDUCE_NUMBER_OF_THREADS);
     dim3 grid((M + REDUCE_BM - 1) / REDUCE_BM);
     printf("M: %d -- %d block(s) and %d threads per block\n", M, grid.x * grid.y, block.x);
 
     cudaMalloc((void**)&d_a, sizeof(float) * M);
+    cudaMalloc((void**)&d_result, sizeof(float) * grid.x);
 
     cudaMemcpy(d_a, a, sizeof(float) * M, cudaMemcpyHostToDevice);
+    cudaMemcpy(d_result, result, sizeof(float) * grid.x, cudaMemcpyHostToDevice);
 
-    reduce<<<grid, block>>>(d_a, M);
+    reduce_warps<<<grid, block>>>(d_a, M, d_result);
     CUDA_CHECK_ERROR(cudaPeekAtLastError());
     cudaDeviceSynchronize();
 
-    cudaMemcpy(a, d_a, sizeof(float) * M, cudaMemcpyDeviceToHost);
+    cudaMemcpy(result, d_result, sizeof(float) * grid.x, cudaMemcpyDeviceToHost);
 
     // Clean up
     cudaFree(d_a);
+    cudaFree(d_result);
 }

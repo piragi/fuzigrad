@@ -9,6 +9,7 @@ libmatmul = ctypes.CDLL('/home/piragi/projects/fuzigrad/build/libkernel_debug.so
 libmatmul.reduce_kernel.argtypes = [
     np.ctypeslib.ndpointer(dtype=np.float32, flags="C_CONTIGUOUS"),
     ctypes.c_int,
+    np.ctypeslib.ndpointer(dtype=np.float32, flags="C_CONTIGUOUS")
 ]
 
 # Define the return type
@@ -18,16 +19,17 @@ def reduce_benchmark():
     np.random.seed(0)
     a = np.ones(256, dtype=float)
     a = np.array(a, dtype=np.float32, order='C')
-    
+    result = np.zeros(2, dtype=float) 
+    result = np.array(result, dtype=np.float32, order='C')
 
     times = []
     for _ in range(1): 
         start = time.time()
-        _ = libmatmul.reduce_kernel(a, 256)
+        libmatmul.reduce_kernel(a, 256, result)
         times.append(time.time()-start)
     print(f'time[ms] average of 1 in 100 iterations: {np.average(times) * 1e3}')
 
-    print(a)
+    print(result)
     assert a[0] == 128, f'a[0] = {a[0]}'
 
     return _

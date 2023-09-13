@@ -3,8 +3,9 @@
 #include "../constants.h"
 
 __device__ void load_GMEM(float* a, float* a_local, const int idx) {
-    int pos = idx * 4;
-    reinterpret_cast<float4*>(&a_local[idx*4])[0] = reinterpret_cast<float4*>(&a[pos])[0]; 
+    int global_pos = blockIdx.x * WARPSIZE * 4;
+    int local_pos = idx * 4;
+    reinterpret_cast<float4*>(&a_local[local_pos])[0] = reinterpret_cast<float4*>(&a[global_pos+local_pos])[0]; 
 }
 
 __device__ void load_SMEM(float* a_local, float* thread_value, const int idx) {
@@ -20,7 +21,7 @@ __device__ void shuffle_down_warps_reduce(float* thread_value) {
     // TODO: it is 128 for every thread? should not be
 }
 
-extern "C" __global__ void reduce(float* a, const int M) {
+extern "C" __global__ void reduce_warps(float* a, const int M, float* result) {
     __shared__ float values[WARPSIZE * 4];
     float thread_value = 0.0;
 
@@ -28,7 +29,6 @@ extern "C" __global__ void reduce(float* a, const int M) {
     const int warpthread_idx = idx % WARPSIZE;
     const int warp_idx = idx / WARPSIZE;
 
-    a += blockIdx.x * WARPSIZE * 4;
 
     load_GMEM(a, values, warpthread_idx);
     __syncthreads();
@@ -38,6 +38,6 @@ extern "C" __global__ void reduce(float* a, const int M) {
 
     if (warpthread_idx == 0) {
         printf("block %d, warp %d, value %f\n", blockIdx.x, warp_idx, thread_value);
-        a[blockIdx.x] = thread_value;
+        result[blockIdx.x] = thread_value;
     }
 }
