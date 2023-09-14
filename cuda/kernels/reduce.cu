@@ -21,6 +21,12 @@ __device__ void shuffle_down_warps_reduce(float* thread_value) {
     // TODO: it is 128 for every thread? should not be
 }
 
+// start block with multiple warps
+// do warp reduce
+// store result in shared memory
+// do shared memory reduce
+// store result in global memory
+// repeat until only one block left
 extern "C" __global__ void reduce_warps(float* a, const int M, float* result) {
     __shared__ float values[WARPSIZE * 4];
     float thread_value = 0.0;
@@ -28,6 +34,7 @@ extern "C" __global__ void reduce_warps(float* a, const int M, float* result) {
     const int idx = threadIdx.x;
     const int warpthread_idx = idx % WARPSIZE;
     const int warp_idx = idx / WARPSIZE;
+    const int number_of_warps = REDUCE_NUMBER_OF_THREADS / WARPSIZE;
 
 
     load_GMEM(a, values, warpthread_idx);
@@ -37,7 +44,10 @@ extern "C" __global__ void reduce_warps(float* a, const int M, float* result) {
     shuffle_down_warps_reduce(&thread_value);
 
     if (warpthread_idx == 0) {
-        printf("block %d, warp %d, value %f\n", blockIdx.x, warp_idx, thread_value);
-        result[blockIdx.x] = thread_value;
+        int blockId = blockIdx.x;
+        int blockDi = gridDim.x;
+        int pos = blockId * number_of_warps + warp_idx;
+        printf("(pos: %d) block %d, warp %d, value %f\n", pos, blockIdx.x, warp_idx, thread_value);
+        result[pos] = thread_value;
     }
 }

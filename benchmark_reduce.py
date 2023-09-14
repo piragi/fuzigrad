@@ -15,21 +15,27 @@ libmatmul.reduce_kernel.argtypes = [
 # Define the return type
 libmatmul.reduce_kernel.restype = ctypes.c_float
 
+BM = 256
+NUMBER_OF_THREADS = BM / 4 
+NUMBER_OF_WARPS = NUMBER_OF_THREADS / 32
+
+
 def reduce_benchmark():
     np.random.seed(0)
-    a = np.ones(256, dtype=float)
+    M = 16384
+    a = np.ones(M, dtype=float)
     a = np.array(a, dtype=np.float32, order='C')
-    result = np.zeros(2, dtype=float) 
+    result = np.zeros((int) ((M / BM) * NUMBER_OF_WARPS), dtype=float) 
     result = np.array(result, dtype=np.float32, order='C')
 
     times = []
     for _ in range(1): 
         start = time.time()
-        libmatmul.reduce_kernel(a, 256, result)
+        libmatmul.reduce_kernel(a, M, result)
         times.append(time.time()-start)
     print(f'time[ms] average of 1 in 100 iterations: {np.average(times) * 1e3}')
 
-    print(result)
+    print(result.size)
     assert a[0] == 128, f'a[0] = {a[0]}'
 
     return _

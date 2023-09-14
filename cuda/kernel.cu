@@ -87,18 +87,18 @@ extern "C" void reduce_kernel(float* a, const int M, float* result) {
     dim3 block(REDUCE_NUMBER_OF_THREADS);
     dim3 grid((M + REDUCE_BM - 1) / REDUCE_BM);
     printf("M: %d -- %d block(s) and %d threads per block\n", M, grid.x * grid.y, block.x);
-
+    printf("size of array: %d\n", grid.x * REDUCE_NUMBER_OF_WARPS);
     cudaMalloc((void**)&d_a, sizeof(float) * M);
-    cudaMalloc((void**)&d_result, sizeof(float) * grid.x);
+    cudaMalloc((void**)&d_result, sizeof(float) * grid.x * REDUCE_NUMBER_OF_WARPS);
 
     cudaMemcpy(d_a, a, sizeof(float) * M, cudaMemcpyHostToDevice);
-    cudaMemcpy(d_result, result, sizeof(float) * grid.x, cudaMemcpyHostToDevice);
+    cudaMemcpy(d_result, result, sizeof(float) * grid.x * REDUCE_NUMBER_OF_WARPS, cudaMemcpyHostToDevice);
 
     reduce_warps<<<grid, block>>>(d_a, M, d_result);
     CUDA_CHECK_ERROR(cudaPeekAtLastError());
     cudaDeviceSynchronize();
 
-    cudaMemcpy(result, d_result, sizeof(float) * grid.x, cudaMemcpyDeviceToHost);
+    cudaMemcpy(result, d_result, sizeof(float) * grid.x * REDUCE_NUMBER_OF_WARPS, cudaMemcpyDeviceToHost);
 
     // Clean up
     cudaFree(d_a);
