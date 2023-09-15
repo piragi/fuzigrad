@@ -21,7 +21,7 @@ debug: $(DEBUG_OUT_FILE)
 
 profile: $(OUT_FILE)
 	mkdir -p $(PROFILE_DIR)
-	/opt/nvidia/nsight-compute/2023.2.1/ncu -o $(PROFILE_DIR)/benchmark_matmul_profile python3 benchmark_matmul.py
+	/opt/nvidia/nsight-compute/2023.2.1/ncu -o $(PROFILE_DIR)/benchmark_reduce_profile python3 benchmark_reduce.py
 
 $(OUT_FILE): $(CUDA_FILES)
 	mkdir -p $(BUILD_DIR)
