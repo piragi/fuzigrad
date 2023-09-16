@@ -88,7 +88,7 @@ extern "C" void reduce_kernel(float* a, const int M, float* result) {
     assert(M >= 128);      // M must be at least 128 big
 
     dim3 block(REDUCE_NUMBER_OF_THREADS);
-    dim3 grid((M + REDUCE_BM - 1) / REDUCE_BM);
+    dim3 grid((M + REDUCE_BM - 1) / REDUCE_BM, 1);
     // printf("M: %d -- %d block(s) and %d threads per block\n", M, grid.x * grid.y, block.x);
     // printf("size of array: %d\n", grid.x * REDUCE_NUMBER_OF_WARPS);
     cudaMalloc((void**)&d_a, sizeof(float) * M);

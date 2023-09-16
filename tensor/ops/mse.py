@@ -1,22 +1,44 @@
 import ctypes
 import numpy as np
 import time
+import math
+
+
+MSE_BM = 64
+MSE_BN = 64
+BM = 256
+NUMBER_OF_THREADS = BM / 4 
+NUMBER_OF_WARPS = NUMBER_OF_THREADS / 32
 
 # Load the shared library
 libmatmul = ctypes.CDLL('/home/piragi/projects/fuzigrad/build/libkernel_debug.so')
-# Define the argument types for the matmul_2d_benchmark function
+
+libmatmul.mse.argtypes = [
+    np.ctypeslib.ndpointer(dtype=np.float32, flags="C_CONTIGUOUS"),
+    np.ctypeslib.ndpointer(dtype=np.float32, flags="C_CONTIGUOUS"),
+    np.ctypeslib.ndpointer(dtype=np.float32, flags="C_CONTIGUOUS"),
+    ctypes.c_int,
+    ctypes.c_int,
+]
+libmatmul.mse.restype = ctypes.c_float
+
 libmatmul.reduce_kernel.argtypes = [
     np.ctypeslib.ndpointer(dtype=np.float32, flags="C_CONTIGUOUS"),
     ctypes.c_int,
     np.ctypeslib.ndpointer(dtype=np.float32, flags="C_CONTIGUOUS")
 ]
-
-# Define the return type
 libmatmul.reduce_kernel.restype = ctypes.c_float
 
-BM = 256
-NUMBER_OF_THREADS = BM / 4 
-NUMBER_OF_WARPS = NUMBER_OF_THREADS / 32
+def mse(a, b):
+    a = np.array(a, dtype=np.float32, order='C')
+    b = np.array(b, dtype=np.float32, order='C')
+    M, K = a.shape
+    K_, N = b.shape
+    assert K == K_
+    block_dims = (math.ceil(M/MSE_BM) * math.ceil(N/MSE_BN))
+    result = np.zeros((block_dims), dtype=np.float32, order='C')
+    libmatmul.mse(a, b, result, M, N)
+    return reduce(result) 
 
 # TODO: np implementation through cpu is way faster like 3-10x 
 def reduce(a):

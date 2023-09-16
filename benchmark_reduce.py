@@ -12,19 +12,11 @@ libmatmul.reduce_kernel.argtypes = [
     ctypes.c_int,
     np.ctypeslib.ndpointer(dtype=np.float32, flags="C_CONTIGUOUS")
 ]
-
-# Define the return type
 libmatmul.reduce_kernel.restype = ctypes.c_float
-
-BM = 256
-NUMBER_OF_THREADS = BM / 4 
-NUMBER_OF_WARPS = NUMBER_OF_THREADS / 32
-
 
 def reduce_benchmark(M):
     np.random.seed(0)
-    a = np.ones(M, dtype=float)
-
+    a = np.random.uniform(1, 100, M)
     times = []
     for _ in range(1): 
         start = time.time()
@@ -32,7 +24,10 @@ def reduce_benchmark(M):
         times.append(time.time()-start)
     print(f'(GPU) time[ms] average of 1 in 100 iterations: {np.average(times) * 1e3}')
 
-    assert result[0] == M, f'result[0] = {result[0]}'
+    tolerance = 1e-5    
+    abs_error = np.abs(a.sum()- result[0])
+    rel_error = abs_error / np.abs(a.sum())
+    assert abs_error <= tolerance or rel_error <= tolerance, f'Array of {M}; absolute error: {abs_error}, relative error: {rel_error}'
 
     return _
 
