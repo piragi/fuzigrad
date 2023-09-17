@@ -91,44 +91,66 @@ def test_tensor_transpose():
 # assert np.allclose(c_torch, c.value)
 # print(f'diff torch-fuzi {c_torch.numpy() - c.value}, fuzigrad:{c.value}, torch:{c_torch}, cpu:{c_cpu}')
 
-# x_np = np.random.uniform(0, 100, (100, 100))
-# target_np = np.random.uniform(0, 100, (100, 100))
-# w1_np = np.random.uniform(0, 100, (100, 200))
-# b1_np = np.random.uniform(0, 100, (100, 200))
-# w2_np = np.random.uniform(0, 100, (200, 100))
-# b2_np = np.random.uniform(0, 100, (100, 100))
+def test_matmul():
+    x_np = np.random.uniform(0, 100, (128, 256))
+    w1_np = np.random.uniform(0, 100, (256, 128))
+    b1_np = np.random.uniform(0, 100, (128, 128))
+    w2_np = np.random.uniform(0, 100, (128, 256))
 
-# x = Tensor(x_np, requires_grad=True)
-# target = Tensor(target_np, requires_grad=True)
-# w1 = Tensor(w1_np, requires_grad=True)
-# b1 = Tensor(b1_np, requires_grad=True)
-# w2 = Tensor(w2_np, requires_grad=True)
-# b2 = Tensor(b2_np, requires_grad=True)
+    x = Tensor(x_np, requires_grad=True)
+    w1 = Tensor(w1_np, requires_grad=True)
+    x_torch = torch.tensor(x_np, requires_grad=True)
+    w1_torch = torch.tensor(w1_np, requires_grad=True)
+    l1 = x @ w1
+    l1_torch = x_torch @ w1_torch
+    assert np.allclose(l1.value, l1_torch.detach().numpy(), 0.01)
 
-# x_torch = torch.tensor(x_np, requires_grad=True)
-# target_torch = torch.tensor(target_np, requires_grad=True)
-# w1_torch = torch.tensor(w1_np, requires_grad=True)
-# b1_torch = torch.tensor(b1_np, requires_grad=True)
-# w2_torch = torch.tensor(w2_np, requires_grad=True)
-# b2_torch = torch.tensor(b2_np, requires_grad=True)
+    b1 = Tensor(b1_np, requires_grad=True)
+    b1_torch = torch.tensor(b1_np, requires_grad=True)
+    l2 = l1 + b1
+    l2_torch = l1_torch + b1_torch
+    assert np.allclose(l2.value, l2_torch.detach().numpy(), 0.01)
 
-# l1 = x @ w1
-# l2 = l1 + b1
-# l3 = l2 @ w2
-# l4 = l3 + b2
-# loss = l4.mse(target)
-# ir_torch = x_torch @ w1_torch
-# ir_torch += b1_torch
-# ir_torch = ir_torch @ w2_torch
-# ir_torch += b2_torch
-# loss_torch = F.mse_loss(ir_torch, target_torch)
-# loss.backward()
-# loss_torch.backward()
+def mse_backward_matmul(): 
+    x_np = np.random.uniform(0, 100, (100, 100))
+    target_np = np.random.uniform(0, 100, (100, 100))
+    w1_np = np.random.uniform(0, 100, (100, 200))
+    b1_np = np.random.uniform(0, 100, (100, 200))
+    w2_np = np.random.uniform(0, 100, (200, 100))
+    b2_np = np.random.uniform(0, 100, (100, 100))
 
-# assert np.allclose(w1.grad.value, w1_torch.grad)
-# assert np.allclose(b1.grad.value, b1_torch.grad)
-# assert np.allclose(w2.grad.value, w2_torch.grad)
-# assert np.allclose(b2.grad.value, b2_torch.grad)
+    x = Tensor(x_np, requires_grad=True)
+    target = Tensor(target_np, requires_grad=True)
+    w1 = Tensor(w1_np, requires_grad=True)
+    b1 = Tensor(b1_np, requires_grad=True)
+    w2 = Tensor(w2_np, requires_grad=True)
+    b2 = Tensor(b2_np, requires_grad=True)
+
+    x_torch = torch.tensor(x_np, requires_grad=True)
+    target_torch = torch.tensor(target_np, requires_grad=True)
+    w1_torch = torch.tensor(w1_np, requires_grad=True)
+    b1_torch = torch.tensor(b1_np, requires_grad=True)
+    w2_torch = torch.tensor(w2_np, requires_grad=True)
+    b2_torch = torch.tensor(b2_np, requires_grad=True)
+
+    l1 = x @ w1
+    ir_torch = x_torch @ w1_torch
+    assert np.allclose(l1.value, ir_torch.detach().numpy(), 0.01)
+    l2 = l1 + b1
+    l3 = l2 @ w2
+    l4 = l3 + b2
+    loss = l4.mse(target)
+    ir_torch += b1_torch
+    ir_torch = ir_torch @ w2_torch
+    ir_torch += b2_torch
+    loss_torch = F.mse_loss(ir_torch, target_torch)
+    loss.backward()
+    loss_torch.backward()
+
+    assert np.allclose(w1.grad.value, w1_torch.grad)
+    assert np.allclose(b1.grad.value, b1_torch.grad)
+    assert np.allclose(w2.grad.value, w2_torch.grad)
+    assert np.allclose(b2.grad.value, b2_torch.grad)
 
 # # -- XOR NN --
 
