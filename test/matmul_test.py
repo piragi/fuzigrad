@@ -28,8 +28,8 @@ def test_matmul_128_256():
     rand2 = np.random.uniform(0, 100, (256, 128)) 
     matmul(rand1, rand2)
 
-def test_matmul_128_128_128_256():
-    rand1 = np.random.uniform(0, 100, (128, 128))
+def matmul_128_128_128_256():
+    rand1 = np.random.uniform(0, 100, (256, 128))
     rand2 = np.random.uniform(0, 100, (128, 256)) 
     matmul(rand1, rand2)
 

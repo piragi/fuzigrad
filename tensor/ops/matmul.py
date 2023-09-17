@@ -17,6 +17,7 @@ libmatmul.matmul.argtypes = [
 
 libmatmul.matmul.restype = None
 
+# TODO: fails when M != N
 def matmul_2d(a, b):
     M, K = a.value.shape
     K_, N = b.value.shape

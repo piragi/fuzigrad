@@ -38,7 +38,7 @@ def mse(a, b):
     block_dims = (math.ceil(M/MSE_BM) * math.ceil(N/MSE_BN))
     result = np.zeros((block_dims), dtype=np.float32, order='C')
     libmatmul.mse(a, b, result, M, N)
-    return reduce(result) 
+    return reduce(result) / (M * N) 
 
 # TODO: np implementation through cpu is way faster like 3-10x 
 def reduce(a):
