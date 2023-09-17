@@ -2,6 +2,7 @@ import pyopencl as cl
 import numpy as np
 import time
 import tensor.ops.matmul as cuda_matmul
+import tensor.ops.mse as cuda_mse
 
 context = cl.create_some_context()
 device = context.devices[0]
@@ -134,89 +135,5 @@ def is_even(n):
     return n > 0 and (n%2) == 0
 
 def mse(tensor1, tensor2):
-    start_time = time.time()
-    a = tensor1.value.astype(np.float32)
-    b = tensor2.value.astype(np.float32)
-
-    mse = cl.Program(context, """
-        __kernel void squared_difference(__global float* a, __global float* b, __global float* c, const int size) {
-            int row = get_global_id(0);
-            int column = get_global_id(1);
-            int idx = column + row * size;
-
-            c[idx] = pow(a[idx] - b[idx], 2);
-        }
-
-        __kernel void sum(__global float* a, const int size, const int num_elements) {
-            int row = get_global_id(0);
-            int column = get_global_id(1);
-            int idx = column + row * size;
-            
-            a[idx] += a[idx + num_elements];
-        }
-
-        __kernel void sum_remainder(__global float* a, const int size, const int num_elements) {
-            int row = get_global_id(0);
-            int idx = row * size;
-
-            a[idx] += a[idx + (num_elements*2)];
-        }
-
-        __kernel void sum_row_wise(__global float* a, const int size, const int num_elements) {
-            int row = get_global_id(0);
-            int idx = row * size;
-            
-            a[idx] += a[idx + num_elements*size];
-        }
-        
-        __kernel void sum_row_wise_remainder(__global float* a, const int size, const int num_elements) {
-            int row = get_global_id(0);
-            int idx = row * size;
-            
-            a[0] += a[size*(num_elements*2)];
-        }
-    """).build()
-    a_buf = cl.Buffer(context, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=a)
-    b_buf = cl.Buffer(context, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=b)
-    c_buf = cl.Buffer(context, mf.WRITE_ONLY, a.nbytes)
-    #print(f'Move buffer a,b to device, create c through kernel: {time.time() - start_time} seconds')
-    start_time = time.time()
-
-    mse.squared_difference(queue, a.shape, None, a_buf, b_buf, c_buf, np.int32(a.shape[1]))
-  
-    #print(f'Squared difference: {time.time() - start_time} seconds')
-    start_time = time.time()
-
-    even = is_even(a.shape[1])
-    num_elements = a.shape[1] // 2
-    while (num_elements != 0):
-        mse.sum(queue, (a.shape[0], num_elements), None, c_buf, np.int32(a.shape[1]), np.int32(num_elements))
-        if not even:
-            mse.sum_remainder(queue, (a.shape[0],), None, c_buf, np.int32(a.shape[1]), np.int32(num_elements))
-        even = is_even(num_elements)
-        num_elements = num_elements//2
-    
-    #print(f'Row-wise sum: {time.time() - start_time} seconds')
-    start_time = time.time()
-
-    even = is_even(a.shape[0])
-    num_elements = a.shape[0] // 2
-    while (num_elements != 0):
-        mse.sum_row_wise(queue, (num_elements,), None, c_buf, np.int32(a.shape[1]), np.int32(num_elements))
-        if not even:
-            mse.sum_row_wise_remainder(queue, (1,), None, c_buf, np.int32(a.shape[1]), np.int32(num_elements))
-        even = is_even(num_elements)
-        num_elements = num_elements//2
-
-    #print(f'Column-wise sum: {time.time() - start_time} seconds')
-    start_time = time.time()
-
-    result = np.zeros(1, dtype=np.float32)
-    cl.enqueue_copy(queue, result, c_buf, src_offset=0)
-    
-    #print(f'Transfer c to scalar: {time.time() - start_time} seconds')
-    start_time = time.time()
-    
-    return result/a.size
-
+    return cuda_mse.mse(tensor1, tensor2)
 

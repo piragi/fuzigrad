@@ -11,7 +11,7 @@ NUMBER_OF_THREADS = BM / 4
 NUMBER_OF_WARPS = NUMBER_OF_THREADS / 32
 
 # Load the shared library
-libmatmul = ctypes.CDLL('/home/piragi/projects/fuzigrad/build/libkernel_debug.so')
+libmatmul = ctypes.CDLL('/home/piragi/projects/fuzigrad/build/libkernel.so')
 
 libmatmul.mse.argtypes = [
     np.ctypeslib.ndpointer(dtype=np.float32, flags="C_CONTIGUOUS"),
@@ -30,8 +30,8 @@ libmatmul.reduce_kernel.argtypes = [
 libmatmul.reduce_kernel.restype = ctypes.c_float
 
 def mse(a, b):
-    a = np.array(a, dtype=np.float32, order='C')
-    b = np.array(b, dtype=np.float32, order='C')
+    a = np.array(a.value, dtype=np.float32, order='C')
+    b = np.array(b.value, dtype=np.float32, order='C')
     M, K = a.shape
     K_, N = b.shape
     assert K == K_
