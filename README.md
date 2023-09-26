@@ -1,15 +1,18 @@
 # Fuzigrad
-Implementation of ML Framework for educational purposes.
-Inspirations: [karpathy/micrograd](https://github.com/karpathy/micrograd/) and [geohot/tinygrad](https://github.com/geohot/tinygrad/).
+Implementation of ML Framework for my educational purposes.
+Inspirations: [karpathy/micrograd](https://github.com/karpathy/micrograd/) and [geohot/tinygrad](https://github.com/geohot/tinygrad/). Everything is handwritten down to the CUDA Kernels.
 
 ## Roadlist:
 - **First trained network!**
-    - adding them in a Forward structure (aka. model = Model())
+    - doing basic MNIST classification
 - **Accelerator**
     - Matmul with tiling with reference from [here](https://siboehm.com/articles/22/CUDA-MMM)
-    - Load leafs into buffers at start, have a queue of operation and memory access
+    - Basic operations in CUDA
     - Broadcasting
 - **Basic Functions**
+    - MSE
+    - Reduce
+    - Matmul
     - Sigmoid
     - improved SGD
     - DataLoader
@@ -20,7 +23,23 @@ To compile the project:
 ```bash
 make
 ```
-To compile and start the benchmark:
+To compile in debug mode:
 ```bash
-make benchmark
+make debug
+```
+To generate profiles for inspection with Nvidia Nsight:
+```bash
+make profile
+```
+
+## Benchmark:
+Start benchmarking the custom CUDA kernels:
+```bash
+python3 benchmark.py
+```
+
+## Tests:
+Testing is started via:
+```bash
+pytest test
 ```

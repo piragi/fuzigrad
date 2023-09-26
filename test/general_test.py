@@ -85,7 +85,7 @@ def test_mse():
     assert np.allclose(c_torch, c.value)
     print(f'diff torch-fuzi {c_torch.numpy() - c.value}, fuzigrad:{c.value}, torch:{c_torch}, cpu:{c_cpu}')
 
-def test_matmul():
+def test_matmul_with_grads():
     x_np = np.random.uniform(0, 100, (256, 256))
     target_np = np.random.uniform(0, 100, (256, 256))
     w1_np = np.random.uniform(0, 100, (256, 256))

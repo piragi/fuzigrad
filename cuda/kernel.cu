@@ -55,7 +55,6 @@ extern "C" void mse(float* a, float* b, float* c, const int M, const int N) {
 
     dim3 block(MSE_NUMBER_OF_THREADS);
     dim3 grid((M + MSE_BM - 1) / MSE_BM, (N + MSE_BN - 1) / MSE_BN);
-    printf("M: %d, N: %d -- %d blocks and %d threads per block\n", M, N, grid.x * grid.y, block.x);
 
     cudaMalloc((void**)&d_a, sizeof(float) * M * N);
     cudaMalloc((void**)&d_b, sizeof(float) * M * N);
@@ -89,8 +88,6 @@ extern "C" void reduce_kernel(float* a, const int M, float* result) {
 
     dim3 block(REDUCE_NUMBER_OF_THREADS);
     dim3 grid((M + REDUCE_BM - 1) / REDUCE_BM, 1);
-    // printf("M: %d -- %d block(s) and %d threads per block\n", M, grid.x * grid.y, block.x);
-    // printf("size of array: %d\n", grid.x * REDUCE_NUMBER_OF_WARPS);
     cudaMalloc((void**)&d_a, sizeof(float) * M);
     cudaMalloc((void**)&d_result, sizeof(float) * grid.x * REDUCE_NUMBER_OF_WARPS);
 

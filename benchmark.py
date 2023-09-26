@@ -2,54 +2,40 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 import time
-import tensor.ops.matmul as op
+import tensor.ops.matmul as matmul
+import tensor.ops.mse as mse
 from tensor.tensor import Tensor
 
-def mse_time_comparison(n_rows, n_cols):
-    rand1 = np.random.uniform(0, 100, (n_rows, n_cols))
-    rand2 = np.random.uniform(0, 100, (n_rows, n_cols))
+repeat = 50
 
-    # FuziGrad MSE calculation
-    a = Tensor(rand1)
-    b = Tensor(rand2) # TODO: takes about a second to generate both?!
-    start = time.time()
-    c = a.mse(b)
-    end = time.time()
-    fuzi_time = end - start
+def time_operation(op_func, op_name, verification_func, n_rows, n_cols):
+    a, b = prepare_data(n_rows, n_cols)
+    times = []
 
-    # PyTorch MSE calculation
-    a_torch = torch.tensor(rand1, requires_grad=False)
-    b_torch = torch.tensor(rand2, requires_grad=False)
-    start = time.time()
-    c_torch = F.mse_loss(a_torch, b_torch)
-    end = time.time()
-    torch_time = end - start
+    for _ in range(repeat):
+        start = time.time()
+        c = op_func(a, b)
+        times.append(time.time() - start)
+    
+    print(f'({n_rows} x {n_cols}) time[ms] average of 1 {op_name} operation in {repeat} iterations: {np.average(times) * 1e3}')
 
-    # CPU numpy MSE calculation
-    start = time.time()
-    c_cpu = np.mean((rand1 - rand2) ** 2)
-    end = time.time()
-    cpu_time = end - start
-
-    print(f'FuziGrad MSE Time: {fuzi_time} seconds')
-    print(f'PyTorch MSE Time: {torch_time} seconds')
-    print(f'CPU numpy MSE Time: {cpu_time} seconds')
-
-def matmul_time(n_rows, n_cols):
-    rand1 = np.random.uniform(0, 10, (n_rows, n_cols))
-    rand2 = np.random.uniform(0, 10, (n_rows, n_cols))
-    a = Tensor(rand1)
-    b = Tensor(rand2)
-
-    c = op.matmul_2d(a, b)
-    c_torch = torch.tensor(rand1) @ torch.tensor(rand2)
+    c_torch = verification_func(a, b)
     c_torch_np = c_torch.numpy().astype(c.dtype)
     assert np.allclose(c, c_torch_np)
 
-#mse_time_comparison(20000, 20000)  # specify number of rows and columns for the test tensors
-matmul_time(128, 128) 
-matmul_time(256, 256) 
-matmul_time(512, 512) 
-matmul_time(1024, 1024) 
-matmul_time(2048, 2048) 
-matmul_time(4096, 4096) 
+def prepare_data(n_rows, n_cols):
+    rand1 = np.random.uniform(0, 100, (n_rows, n_cols))
+    rand2 = np.random.uniform(0, 100, (n_rows, n_cols))
+    a = Tensor(rand1)
+    b = Tensor(rand2)
+    return a, b
+
+matrix_sizes = [128, 256, 512, 1024, 2048]
+
+# Timing matrix multiplication
+for size in matrix_sizes:
+    time_operation(matmul.matmul_2d, 'matmul', lambda a, b: torch.tensor(a.value) @ torch.tensor(b.value), size, size)
+
+# Timing mean squared error
+for size in matrix_sizes:
+    time_operation(mse.mse, 'mean squared error', lambda a, b: F.mse_loss(torch.tensor(a.value), torch.tensor(b.value)), size, size)

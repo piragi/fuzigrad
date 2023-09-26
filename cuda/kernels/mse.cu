@@ -91,9 +91,6 @@ extern "C" __global__ void mean_squared_error(float *a, float *b, float *block_r
     load_SMEM(a_local, b_local, M, N, &reg_tile, warp_row, warp_col, warp_subtile_m, warp_subtile_n, warp_subtile_row, warp_subtile_col, tile_row, tile_col);
     __syncthreads();
     shuffle_down_warps(&reg_tile);
-    // if (blockIdx.x == 0 && blockIdx.y == 0) {
-    // printf("thread_id: %d, result: %f\n", threadIdx.x, reg_tile);
-    //}
     if ((idx % 32) == 0) {
         atomicAdd(block_result, reg_tile);
     }
